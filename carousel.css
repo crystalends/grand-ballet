@@ -1,0 +1,15 @@
+@import url("node_modules/swiper/swiper.css");
+@import url("node_modules/swiper/modules/a11y.css");
+
+.review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 240px;
+  flex: 0 0 240px;
+}
+
+.review-card--wide {
+  width: 500px;
+  flex-basis: 500px;
+}

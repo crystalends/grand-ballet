@@ -1,0 +1,37 @@
+# ГРАНДБАЛЕТ — направления
+
+Статическая pixel-perfect реализация Figma-макета на HTML, CSS и модульном JavaScript.
+
+## Запуск
+
+```bash
+npm install
+npm run serve
+```
+
+Откройте:
+
+- `http://127.0.0.1:8080` — страница направлений;
+- `http://127.0.0.1:8080/service.html` — страница услуги;
+- `http://127.0.0.1:8080/license.html` — лицензия и документы.
+- `http://127.0.0.1:8080/about.html` — о школе.
+- `http://127.0.0.1:8080/halls.html` — залы школы.
+- `http://127.0.0.1:8080/privacy.html` — политика конфиденциальности.
+- `http://127.0.0.1:8080/404.html` — страница 404.
+
+Эталонные Figma-экспорты находятся в `assets/reference/`.
+
+## Проверка
+
+```bash
+npm run test:visual
+npm run test:visual:service
+npm run test:visual:license
+npm run test:about
+npm run test:halls
+npm run test:privacy
+npm run test:404
+npm run test:links
+```
+
+Дополнительно проверьте клавиатурную навигацию по ссылкам, аккордеону FAQ и форме, а также отсутствие ошибок в консоли браузера.

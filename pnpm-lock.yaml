@@ -1,0 +1,54 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      swiper:
+        specifier: 14.0.5
+        version: 14.0.5
+    devDependencies:
+      pixelmatch:
+        specifier: ^7.1.0
+        version: 7.2.0
+      playwright-core:
+        specifier: ^1.55.0
+        version: 1.61.1
+      pngjs:
+        specifier: ^7.0.0
+        version: 7.0.0
+
+packages:
+
+  pixelmatch@7.2.0:
+    resolution: {integrity: sha512-xhcb4yHu9sM/G7foGzoLtXYcC0zHEaOXXjRKhGup0fw78Nf2Tkiapv4EQyMzrbcmQPsllAI7DbFY2UT7PlI9Pg==}
+    hasBin: true
+
+  playwright-core@1.61.1:
+    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  pngjs@7.0.0:
+    resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
+    engines: {node: '>=14.19.0'}
+
+  swiper@14.0.5:
+    resolution: {integrity: sha512-SMSKS0sj+lPIFzngfIKb5cyBtzmAuJw7rXgXdyYiDReb+pSpJXuNljHYgT4DXa5Stnl2Ew2/Lam5ipv4PIqZ7A==}
+    engines: {node: '>= 4.7.0'}
+
+snapshots:
+
+  pixelmatch@7.2.0:
+    dependencies:
+      pngjs: 7.0.0
+
+  playwright-core@1.61.1: {}
+
+  pngjs@7.0.0: {}
+
+  swiper@14.0.5: {}
