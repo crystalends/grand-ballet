@@ -31,6 +31,7 @@ npm run test:about
 npm run test:halls
 npm run test:privacy
 npm run test:404
+npm run test:interactions
 npm run test:links
 ```
 

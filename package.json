@@ -20,6 +20,7 @@
     "test:awards": "node tests/awards-audit.mjs",
     "test:news": "node tests/news-audit.mjs",
     "test:college": "node tests/college-audit.mjs",
+    "test:interactions": "node tests/interaction-audit.mjs",
     "test:links": "node tests/links-audit.mjs"
   },
   "devDependencies": {

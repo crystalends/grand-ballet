@@ -51,7 +51,7 @@ try {
     if ((await modal.locator(".teacher-modal__name").textContent())?.trim() !== expectedName) throw new Error(`${file}: имя педагога не перенесено в модалку.`);
     if (await modal.locator(".teacher-modal__image").getAttribute("src") !== expectedImage) throw new Error(`${file}: фотография педагога не перенесена в модалку.`);
     if (!await modal.locator(".teacher-modal__close").evaluate((button) => button === document.activeElement)) throw new Error(`${file}: фокус не установлен на кнопку закрытия.`);
-    if (!await page.locator("body").evaluate((body) => body.classList.contains("page--dialog-open"))) throw new Error(`${file}: прокрутка страницы не заблокирована.`);
+    if (!await page.locator("body").evaluate((body) => body.classList.contains("is-dialog-open"))) throw new Error(`${file}: прокрутка страницы не заблокирована.`);
 
     const modalBox = await modal.boundingBox();
     const expectedModal = { x: 450, y: 136.5, width: 1020, height: 806 };

@@ -110,7 +110,7 @@ export const initTeacherModal = (teacherCards) => {
   const openModal = (card, trigger) => {
     fillModal(modal, getTeacherData(card));
     activeTrigger = trigger;
-    document.body.classList.add("page--dialog-open");
+    document.body.classList.add("is-dialog-open");
     modal.showModal();
     requestAnimationFrame(syncScrollbar);
   };
@@ -139,7 +139,7 @@ export const initTeacherModal = (teacherCards) => {
     if (isOutside) modal.close();
   });
   modal.addEventListener("close", () => {
-    document.body.classList.remove("page--dialog-open");
+    document.body.classList.remove("is-dialog-open");
     activeTrigger?.focus();
     activeTrigger = null;
   });

@@ -122,10 +122,10 @@ try {
     if (!actual || differs(actual, expected)) throw new Error(`${selector} не переиспользует стандартную геометрию слайдера: ${JSON.stringify(actual)}.`);
   }
 
-  const collegeMap = page.locator(".addresses__map--college");
+  const collegeMap = page.locator(".location-map--college");
   const collegeMapBox = await collegeMap.boundingBox();
   if (!collegeMapBox || differs(collegeMapBox, { x: 840, y: 5969, width: 890, height: 450 })) throw new Error(`Яндекс Карта расположена не по Figma: ${JSON.stringify(collegeMapBox)}.`);
-  const collegeMapSource = await collegeMap.locator(".addresses__map-frame").getAttribute("src");
+  const collegeMapSource = await collegeMap.locator(".location-map__frame").getAttribute("src");
   if (!collegeMapSource?.startsWith("https://yandex.ru/map-widget/v1/")) throw new Error("В колледже не переиспользован iframe Яндекс Карт.");
   const locationPanel = page.locator(".college-location__panel");
   if (await locationPanel.locator(".college-location__details > p").count() !== 3) {
@@ -210,8 +210,8 @@ try {
   console.log(`College location panel visual diff: ${(locationPanelDiffRatio * 100).toFixed(2)}%`);
   if (locationPanelDiffRatio > .045) throw new Error(`Карточка контактов отличается от узла Figma на ${(locationPanelDiffRatio * 100).toFixed(2)}%.`);
 
-  const trustStatement = page.locator(".school-audience__intro--college");
-  if (!await trustStatement.locator(".school-audience__copy--college").count()) throw new Error("Градиентная карточка не переиспользует school-audience__copy.");
+  const trustStatement = page.locator(".audience-statement--college");
+  if (!await trustStatement.locator(".audience-statement__copy--college").count()) throw new Error("Градиентная карточка не использует блок audience-statement.");
   const trustStatementActualPath = "artifacts/college-trust-statement-actual.png";
   const trustStatementDiffPath = "artifacts/college-trust-statement-diff.png";
   await trustStatement.screenshot({ path: trustStatementActualPath });
