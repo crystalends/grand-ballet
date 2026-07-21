@@ -1,12 +1,15 @@
 import { spawn } from "node:child_process";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { request } from "node:http";
 import process from "node:process";
 import { chromium } from "playwright-core";
+import pixelmatch from "pixelmatch";
+import { PNG } from "pngjs";
 
 const BASE_URL = "http://127.0.0.1:8080";
 const PAGE_URL = `${BASE_URL}/halls.html`;
 const VIEWPORT = { width: 1920, height: 1080 };
+const MAX_DIFF_RATIO = 0.02;
 const expected = [
   [".site-header", 0, 190, 1540],
   [".halls-hero", 141, 190, 1540],
@@ -54,7 +57,22 @@ try {
   const firstPhoto = await page.locator(".hall-photo").first().boundingBox();
   if (!firstPhoto || Math.abs(firstPhoto.x - 190) > 1) throw new Error("Фотографии галереи не выровнены по основному контейнеру.");
   await mkdir("artifacts", { recursive: true });
-  await page.screenshot({ path: "artifacts/halls-actual.png", fullPage: true });
+  const actualPath = "artifacts/halls-actual.png";
+  const diffPath = "artifacts/halls-diff.png";
+  await page.screenshot({ path: actualPath, fullPage: true });
+  const [referenceBuffer, actualBuffer] = await Promise.all([
+    readFile("assets/reference/figma-halls.png"),
+    readFile(actualPath),
+  ]);
+  const reference = PNG.sync.read(referenceBuffer);
+  const actual = PNG.sync.read(actualBuffer);
+  if (reference.width !== actual.width || reference.height !== actual.height) throw new Error(`Размер скриншота не совпадает с Figma: ${actual.width}×${actual.height} вместо ${reference.width}×${reference.height}.`);
+  const diff = new PNG({ width: reference.width, height: reference.height });
+  const differentPixels = pixelmatch(reference.data, actual.data, diff.data, reference.width, reference.height, { threshold: .1 });
+  await writeFile(diffPath, PNG.sync.write(diff));
+  const diffRatio = differentPixels / (reference.width * reference.height);
+  console.log(`Halls visual diff: ${(diffRatio * 100).toFixed(2)}%`);
+  if (diffRatio > MAX_DIFF_RATIO) throw new Error(`Визуальное расхождение ${(diffRatio * 100).toFixed(2)}% превышает лимит ${MAX_DIFF_RATIO * 100}%.`);
   await page.locator(".hall-gallery__row").first().locator(".hall-gallery__arrow--next").click();
   await page.waitForTimeout(400);
   if (await page.locator(".hall-gallery__viewport").first().evaluate((node) => node.swiper?.activeIndex ?? 0) < 1) throw new Error("Галерея не переключает активный слайд.");
@@ -69,7 +87,8 @@ try {
   if (mobile.broken) throw new Error(`Не загрузились изображения: ${mobile.broken}.`);
   if (consoleErrors.length) throw new Error(`Ошибки консоли: ${consoleErrors.join(" | ")}`);
   console.log("Halls geometry, containers, galleries, FAQ, form and mobile audit: OK");
-  console.log("Actual: artifacts/halls-actual.png");
+  console.log(`Actual: ${actualPath}`);
+  console.log(`Diff: ${diffPath}`);
 } finally {
   await browser?.close();
   server?.kill();

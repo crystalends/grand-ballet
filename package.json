@@ -15,6 +15,11 @@
     "test:halls": "node tests/halls-audit.mjs",
     "test:privacy": "node tests/privacy-audit.mjs",
     "test:404": "node tests/not-found-audit.mjs",
+    "test:teacher-modal": "node tests/teacher-modal-audit.mjs",
+    "test:teachers": "node tests/teachers-audit.mjs",
+    "test:awards": "node tests/awards-audit.mjs",
+    "test:news": "node tests/news-audit.mjs",
+    "test:college": "node tests/college-audit.mjs",
     "test:links": "node tests/links-audit.mjs"
   },
   "devDependencies": {

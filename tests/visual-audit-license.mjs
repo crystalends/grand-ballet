@@ -10,7 +10,7 @@ const BASE_URL = "http://127.0.0.1:8080";
 const PAGE_URL = `${BASE_URL}/license.html`;
 const VIEWPORT = { width: 1920, height: 1080 };
 const EXPECTED_PAGE_HEIGHT = 4231;
-const MAX_DIFF_RATIO = 0.03;
+const MAX_DIFF_RATIO = 0.02;
 
 const isServerReady = () => new Promise((resolve) => {
   const req = request(BASE_URL, (response) => {
