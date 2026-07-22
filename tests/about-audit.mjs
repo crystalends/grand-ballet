@@ -66,6 +66,30 @@ try {
     }
   }
 
+  const missionLineOffsets = await page.locator(".school-mission .mission-card__line-frame").evaluateAll((frames) => frames.map((frame) => {
+    const cardBox = frame.closest(".mission-card").getBoundingClientRect();
+    const frameBox = frame.getBoundingClientRect();
+    return {
+      left: frameBox.left - cardBox.left,
+      top: frameBox.top - cardBox.top,
+      width: frameBox.width,
+      height: frameBox.height,
+    };
+  }));
+  const expectedMissionLines = [
+    { left: -65.19, top: -215 },
+    { left: -455.19, top: -215 },
+    { left: -845.19, top: -124 },
+    { left: -1235.19, top: -124 },
+  ];
+  if (missionLineOffsets.length !== expectedMissionLines.length) throw new Error("В блоке миссии должно быть четыре сегмента общей SVG-линии.");
+  missionLineOffsets.forEach((line, index) => {
+    const expected = expectedMissionLines[index];
+    if (Math.abs(line.left - expected.left) > 0.1 || Math.abs(line.top - expected.top) > 0.1 || Math.abs(line.width - 1695.663) > 0.1 || Math.abs(line.height - 705.026) > 0.1) {
+      throw new Error(`Неверная геометрия SVG-линии ${index + 1}: ${JSON.stringify(line)}.`);
+    }
+  });
+
   const firstTeacher = await page.locator(".about-team .teacher-card").first().boundingBox();
   if (!firstTeacher || Math.abs(firstTeacher.x - 190) > 1) throw new Error("Карточки педагогов не выровнены по основному контейнеру.");
 

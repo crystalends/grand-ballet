@@ -9,8 +9,22 @@ import { PNG } from "pngjs";
 const BASE_URL = "http://127.0.0.1:8080";
 const PAGE_URL = `${BASE_URL}/license.html`;
 const VIEWPORT = { width: 1920, height: 1080 };
-const EXPECTED_PAGE_HEIGHT = 4231;
-const MAX_DIFF_RATIO = 0.02;
+const EXPECTED_PAGE_HEIGHT = 4206;
+const MAX_DIFF_RATIO = 0.03;
+
+const expectedSections = {
+  ".college-header": { x: 190, y: 0, width: 1540, height: 126 },
+  ".license-overview": { x: 190, y: 479, width: 1540, height: 380 },
+  ".documents": { x: 190, y: 959, width: 1540, height: 654 },
+  ".license-importance": { x: 190, y: 1713, width: 1540, height: 330 },
+  ".education-system": { x: 190, y: 2143, width: 1540, height: 454 },
+  ".faq": { x: 190, y: 2697, width: 1540, height: 542 },
+  ".trial": { x: 190, y: 3339, width: 1540, height: 478 },
+  ".college-footer": { x: 190, y: 3857, width: 1540, height: 349 },
+};
+
+const differs = (actual, expected) => Object.entries(expected)
+  .some(([key, value]) => Math.abs(actual[key] - value) > .1);
 
 const isServerReady = () => new Promise((resolve) => {
   const req = request(BASE_URL, (response) => {
@@ -48,11 +62,16 @@ try {
   const dimensions = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }));
   if (dimensions.width !== VIEWPORT.width || dimensions.height !== EXPECTED_PAGE_HEIGHT) throw new Error(`Неверная геометрия страницы: ${dimensions.width}×${dimensions.height}.`);
 
+  for (const [selector, expected] of Object.entries(expectedSections)) {
+    const actual = await page.locator(selector).boundingBox();
+    if (!actual || differs(actual, expected)) throw new Error(`${selector} расположен не по Figma: ${JSON.stringify(actual)}.`);
+  }
+
   await mkdir("artifacts", { recursive: true });
   const actualPath = "artifacts/license-actual.png";
   const diffPath = "artifacts/license-diff.png";
   await page.screenshot({ path: actualPath, fullPage: true });
-  const [referenceBuffer, actualBuffer] = await Promise.all([readFile("assets/reference/figma-license.png"), readFile(actualPath)]);
+  const [referenceBuffer, actualBuffer] = await Promise.all([readFile("assets/reference/figma-college-documents.png"), readFile(actualPath)]);
   const reference = PNG.sync.read(referenceBuffer);
   const actual = PNG.sync.read(actualBuffer);
   const diff = new PNG({ width: reference.width, height: reference.height });

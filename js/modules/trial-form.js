@@ -27,7 +27,7 @@ export const initTrialForm = (form) => {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const status = form.querySelector(".trial-form__status");
+    const status = form.querySelector("[data-form-status], .trial-form__status");
     const result = getValidationResult(form);
     setFieldValidity(form, result.field);
     status.textContent = result.message;

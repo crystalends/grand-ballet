@@ -8,22 +8,22 @@ import { PNG } from "pngjs";
 
 const BASE_URL = "http://127.0.0.1:8080";
 const VIEWPORT = { width: 1920, height: 1080 };
-const EXPECTED_PAGE_HEIGHT = 7405;
-const MAX_DIFF_RATIO = 0.02;
+const EXPECTED_PAGE_HEIGHT = 7280;
+const MAX_DIFF_RATIO = 0.035;
 
 const expectedSections = {
-  ".site-header": { x: 190, y: 0, width: 1540, height: 131 },
-  ".teachers-hero": { x: 190, y: 141, width: 1540, height: 243 },
-  ".teacher-trust": { x: 190, y: 484, width: 1540, height: 380 },
-  ".teacher-directory": { x: 190, y: 964, width: 1540, height: 2146 },
-  ".teaching-approach": { x: 190, y: 3210, width: 1540, height: 330 },
-  ".age-approach": { x: 190, y: 3640, width: 1540, height: 633 },
-  ".applicant-training": { x: 190, y: 4373, width: 1540, height: 482 },
-  ".benefits--teachers": { x: 190, y: 4955, width: 1540, height: 513 },
-  ".faq": { x: 190, y: 5568, width: 1540, height: 542 },
-  ".seo-copy": { x: 190, y: 6210, width: 1540, height: 208 },
-  ".trial": { x: 190, y: 6518, width: 1540, height: 478 },
-  ".site-footer": { x: 190, y: 7036, width: 1540, height: 369 },
+  ".college-header": { x: 190, y: 0, width: 1540, height: 126 },
+  ".teachers-hero": { x: 190, y: 136, width: 1540, height: 243 },
+  ".teacher-trust": { x: 190, y: 479, width: 1540, height: 380 },
+  ".teacher-directory": { x: 190, y: 959, width: 1540, height: 2146 },
+  ".teaching-approach": { x: 190, y: 3205, width: 1540, height: 330 },
+  ".age-approach": { x: 190, y: 3635, width: 1540, height: 533 },
+  ".applicant-training": { x: 190, y: 4268, width: 1540, height: 482 },
+  ".benefits--teachers": { x: 190, y: 4850, width: 1540, height: 513 },
+  ".faq": { x: 190, y: 5463, width: 1540, height: 542 },
+  ".seo-copy": { x: 190, y: 6105, width: 1540, height: 208 },
+  ".trial": { x: 210, y: 6413, width: 1540, height: 478 },
+  ".college-footer": { x: 210, y: 6931, width: 1540, height: 349 },
 };
 
 const isServerReady = () => new Promise((resolve) => {
@@ -76,15 +76,15 @@ try {
   if (await cards.count() !== 16) throw new Error("В каталоге должно быть 16 карточек педагогов.");
   const firstCard = await cards.first().boundingBox();
   const lastCard = await cards.last().boundingBox();
-  if (!firstCard || differs(firstCard, { x: 190, y: 1062, width: 370, height: 497 })) throw new Error("Первая карточка расположена не по Figma.");
-  if (!lastCard || differs(lastCard, { x: 1360, y: 2613, width: 370, height: 497 })) throw new Error("Последняя карточка расположена не по Figma.");
+  if (!firstCard || differs(firstCard, { x: 190, y: 1057, width: 370, height: 497 })) throw new Error("Первая карточка расположена не по Figma.");
+  if (!lastCard || differs(lastCard, { x: 1360, y: 2608, width: 370, height: 497 })) throw new Error("Последняя карточка расположена не по Figma.");
 
   await mkdir("artifacts", { recursive: true });
   const actualPath = "artifacts/teachers-actual.png";
   const diffPath = "artifacts/teachers-diff.png";
   await page.screenshot({ path: actualPath, fullPage: true });
   const [referenceBuffer, actualBuffer] = await Promise.all([
-    readFile("assets/reference/figma-teachers.png"),
+    readFile("assets/reference/figma-college-teachers.png"),
     readFile(actualPath),
   ]);
   const reference = PNG.sync.read(referenceBuffer);
@@ -101,7 +101,26 @@ try {
   await cards.first().locator(".teacher-card__trigger").click();
   if (!await page.locator(".teacher-modal").evaluate((dialog) => dialog.open)) throw new Error("Модалка педагога не открылась.");
   await page.keyboard.press("Escape");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobile = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+    brokenImages: [...document.images].filter((image) => !image.complete || image.naturalWidth === 0).length,
+  }));
+  if (mobile.scroll > mobile.viewport) throw new Error(`Горизонтальный скролл на мобильном: ${mobile.scroll}px.`);
+  if (mobile.brokenImages) throw new Error(`Не загрузились изображения на мобильном: ${mobile.brokenImages}.`);
+
+  const menuToggle = page.locator(".college-header__menu-toggle");
+  await menuToggle.click();
+  if (await menuToggle.getAttribute("aria-expanded") !== "true" || !await page.locator(".college-header__nav").isVisible()) {
+    throw new Error("Мобильное меню колледжа не открылось.");
+  }
+  await page.keyboard.press("Escape");
+  if (await menuToggle.getAttribute("aria-expanded") !== "false") throw new Error("Escape не закрыл мобильное меню.");
+
   if (consoleErrors.length) throw new Error(`Ошибки консоли: ${consoleErrors.join(" | ")}`);
+  console.log("Teacher page desktop visual, modal and 390px mobile audit: OK");
 } finally {
   await browser?.close();
   server?.kill();

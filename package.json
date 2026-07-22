@@ -19,7 +19,13 @@
     "test:teachers": "node tests/teachers-audit.mjs",
     "test:awards": "node tests/awards-audit.mjs",
     "test:news": "node tests/news-audit.mjs",
+    "test:news-detail": "node tests/news-detail-audit.mjs",
     "test:college": "node tests/college-audit.mjs",
+    "test:admissions": "node tests/admissions-audit.mjs",
+    "test:header-dropdown": "node tests/header-dropdown-audit.mjs",
+    "test:application-modal": "node tests/application-modal-audit.mjs",
+    "test:director": "node tests/director-audit.mjs",
+    "test:preparation": "node tests/preparation-audit.mjs",
     "test:interactions": "node tests/interaction-audit.mjs",
     "test:links": "node tests/links-audit.mjs"
   },

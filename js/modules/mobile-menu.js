@@ -34,7 +34,8 @@ const initMenu = (header, index) => {
   });
 
   nav.addEventListener("click", (event) => {
-    if (event.target.closest("a")) setMenuState(menu, false);
+    if (event.target.closest(".college-header__dropdown-trigger")) return;
+    if (event.target.closest("a, [data-application-modal]")) setMenuState(menu, false);
   });
 
   header.addEventListener("keydown", (event) => {
