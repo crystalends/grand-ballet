@@ -12,7 +12,13 @@ initDirectionTabs(document.querySelector(".direction-picker__tabs"));
 initTeacherModal(document.querySelectorAll(".teacher-card"));
 initMobileMenus(document.querySelectorAll(".site-header, .college-header"));
 initHeaderDropdowns(document.querySelectorAll(".college-header"));
-initApplicationModal(document.querySelectorAll('a[href="#trial"], a[href="#contacts"], [data-application-modal]'));
+
+const applicationModalTriggers = document.querySelectorAll("[data-application-modal], .button--header");
+applicationModalTriggers.forEach((trigger) => {
+  if (trigger.dataset.applicationModal) return;
+  trigger.dataset.applicationModal = trigger.closest(".college-header") ? "applicant" : "trial";
+});
+initApplicationModal(applicationModalTriggers);
 
 const carousels = document.querySelectorAll("[data-carousel]");
 

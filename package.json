@@ -27,6 +27,7 @@
     "test:director": "node tests/director-audit.mjs",
     "test:preparation": "node tests/preparation-audit.mjs",
     "test:interactions": "node tests/interaction-audit.mjs",
+    "test:responsive": "node tests/responsive-audit.mjs",
     "test:links": "node tests/links-audit.mjs"
   },
   "devDependencies": {

@@ -19,6 +19,57 @@ const waitForServer = async () => {
   throw new Error("Локальный сервер не запустился на порту 8080.");
 };
 
+const getMobileModalState = async (modal) => modal.evaluate((dialog) => {
+  const body = dialog.querySelector(".teacher-modal__body");
+  const close = dialog.querySelector(".teacher-modal__close");
+  const image = dialog.querySelector(".teacher-modal__image");
+  const details = dialog.querySelector(".teacher-modal__details");
+  const lastSection = dialog.querySelector(".teacher-modal__section:last-child");
+  const rect = dialog.getBoundingClientRect();
+  const closeRect = close.getBoundingClientRect();
+  const detailsVisibleAtStart = details.getBoundingClientRect().top < rect.bottom;
+  const closeTopBeforeScroll = closeRect.top;
+  body.scrollTop = body.scrollHeight;
+  const closeTopAfterScroll = close.getBoundingClientRect().top;
+  const bodyRect = body.getBoundingClientRect();
+  const lastSectionRect = lastSection.getBoundingClientRect();
+  const imageRect = image.getBoundingClientRect();
+  return {
+    rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, bottom: rect.bottom },
+    dialogOverflowY: getComputedStyle(dialog).overflowY,
+    bodyOverflowY: getComputedStyle(body).overflowY,
+    bodyClientHeight: body.clientHeight,
+    bodyScrollHeight: body.scrollHeight,
+    bodyClientWidth: body.clientWidth,
+    bodyScrollWidth: body.scrollWidth,
+    closeWidth: closeRect.width,
+    closeHeight: closeRect.height,
+    closeScrollDelta: Math.abs(closeTopAfterScroll - closeTopBeforeScroll),
+    imageRatio: imageRect.width / imageRect.height,
+    detailsVisibleAtStart,
+    lastSectionVisibleAfterScroll: lastSectionRect.bottom <= bodyRect.bottom + 1,
+  };
+});
+
+const assertMobileModal = (file, viewport, state) => {
+  const maxWidth = Math.min(560, viewport.width - 16);
+  if (state.rect.width > maxWidth + 1 || state.rect.x < 7 || state.rect.bottom > viewport.height - 7) {
+    throw new Error(`${file}: модалка выходит за mobile viewport ${viewport.width}x${viewport.height}: ${JSON.stringify(state.rect)}.`);
+  }
+  if (state.dialogOverflowY !== "hidden" || state.bodyOverflowY !== "auto") {
+    throw new Error(`${file}: прокрутка должна находиться внутри teacher-modal__body: ${JSON.stringify(state)}.`);
+  }
+  if (state.bodyScrollHeight <= state.bodyClientHeight || state.bodyScrollWidth > state.bodyClientWidth) {
+    throw new Error(`${file}: внутренняя прокрутка модалки настроена некорректно: ${JSON.stringify(state)}.`);
+  }
+  if (state.closeWidth < 44 || state.closeHeight < 44 || state.closeScrollDelta > .5) {
+    throw new Error(`${file}: кнопка закрытия должна иметь touch-зону 44px и оставаться на месте: ${JSON.stringify(state)}.`);
+  }
+  if (Math.abs(state.imageRatio - (4 / 3)) > .02 || !state.detailsVisibleAtStart || !state.lastSectionVisibleAfterScroll) {
+    throw new Error(`${file}: мобильная композиция педагога некорректна: ${JSON.stringify(state)}.`);
+  }
+};
+
 let server;
 let browser;
 
@@ -92,11 +143,19 @@ try {
     await page.mouse.click(8, 8);
     if (await modal.evaluate((dialog) => dialog.open)) throw new Error(`${file}: клик по фону не закрыл модалку.`);
 
-    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileViewport = { width: 390, height: 844 };
+    await page.setViewportSize(mobileViewport);
     await trigger.click();
-    const mobileSize = await modal.evaluate((dialog) => ({ width: dialog.getBoundingClientRect().width, scroll: dialog.scrollWidth }));
-    if (mobileSize.width > 358 || mobileSize.scroll > mobileSize.width) throw new Error(`${file}: модалка выходит за мобильный viewport.`);
+    assertMobileModal(file, mobileViewport, await getMobileModalState(modal));
     await modal.locator(".teacher-modal__close").click();
+
+    if (file === "index.html") {
+      const landscapeViewport = { width: 844, height: 390 };
+      await page.setViewportSize(landscapeViewport);
+      await trigger.click();
+      assertMobileModal(file, landscapeViewport, await getMobileModalState(modal));
+      await modal.locator(".teacher-modal__close").click();
+    }
 
     if (consoleErrors.length) throw new Error(`${file}: ошибки консоли: ${consoleErrors.join(" | ")}`);
     await page.close();

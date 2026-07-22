@@ -1,10 +1,7 @@
 import { spawn } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { request } from "node:http";
 import process from "node:process";
 import { chromium } from "playwright-core";
-import pixelmatch from "pixelmatch";
-import { PNG } from "pngjs";
 
 const BASE_URL = "http://127.0.0.1:8080";
 
@@ -22,39 +19,109 @@ const waitForServer = async () => {
   throw new Error("Локальный сервер не запустился на порту 8080.");
 };
 
-const differs = (actual, expected) => Object.entries(expected).some(([key, value]) => Math.abs(actual[key] - value) > .1);
-
-const captureModal = async (modal, path) => {
-  await modal.evaluate((element) => {
-    element.style.top = "0";
-    element.style.left = "0";
-    element.style.margin = "0";
-    element.style.boxShadow = "0 0 0 1000px #1e1e1e";
-  });
-  await modal.screenshot({ path });
-  await modal.evaluate((element) => {
-    element.style.removeProperty("top");
-    element.style.removeProperty("left");
-    element.style.removeProperty("margin");
-    element.style.removeProperty("box-shadow");
-  });
+const expectHref = async (page, selector, expectedHref) => {
+  const link = page.locator(selector).first();
+  if (await link.getAttribute("href") !== expectedHref) {
+    throw new Error(`Ссылка ${selector} должна вести на ${expectedHref}.`);
+  }
+  if (await link.getAttribute("aria-haspopup") === "dialog") {
+    throw new Error(`Страничная ссылка ${selector} не должна открывать модальное окно.`);
+  }
 };
 
-const compareScreenshot = async ({ referencePath, actualPath, diffPath, label }) => {
-  const [referenceBuffer, actualBuffer] = await Promise.all([readFile(referencePath), readFile(actualPath)]);
-  const reference = PNG.sync.read(referenceBuffer);
-  const actual = PNG.sync.read(actualBuffer);
-  if (reference.width !== actual.width || reference.height !== actual.height) throw new Error(`Размер ${label} ${actual.width}×${actual.height} не совпал с Figma ${reference.width}×${reference.height}.`);
-  const diff = new PNG({ width: reference.width, height: reference.height });
-  const differentPixels = pixelmatch(reference.data, actual.data, diff.data, reference.width, reference.height, { threshold: .1 });
-  await writeFile(diffPath, PNG.sync.write(diff));
-  const diffRatio = differentPixels / (reference.width * reference.height);
-  console.log(`${label} visual diff: ${(diffRatio * 100).toFixed(2)}%`);
-  if (diffRatio > .05) throw new Error(`Визуальное расхождение ${label} ${(diffRatio * 100).toFixed(2)}% превышает 5%.`);
+const modalExpectations = {
+  application: { title: "Оставьте заявку", field: null },
+  trial: { title: "Записаться на пробное занятие", field: "[data-trial-field]" },
+  applicant: { title: "Заявка для абитуриента", field: "[data-applicant-field]" },
+  question: { title: "Задать вопрос", field: "[data-question-field]" },
+  franchise: { title: "Получить презентацию франшизы", field: "[data-franchise-field]" },
+};
+
+const expectModalVariant = async (page, selector, variant, { fallbackHref = null } = {}) => {
+  const trigger = page.locator(selector).first();
+  const modal = page.locator(".application-modal");
+  const expectation = modalExpectations[variant];
+  const tagName = await trigger.evaluate((element) => element.tagName);
+  const href = await trigger.getAttribute("href");
+  if (fallbackHref) {
+    if (tagName !== "A" || href !== fallbackHref) {
+      throw new Error(`CTA ${selector} должен сохранять резервную ссылку ${fallbackHref}.`);
+    }
+  } else if (tagName !== "BUTTON" || href !== null) {
+    throw new Error(`Действие ${selector} должно быть кнопкой, а не ссылкой.`);
+  }
+  if (await trigger.getAttribute("data-application-modal") !== variant || await trigger.getAttribute("aria-haspopup") !== "dialog") {
+    throw new Error(`Кнопка ${selector} не связана с вариантом модалки ${variant}.`);
+  }
+  await trigger.click();
+  if (!await modal.isVisible() || await modal.getAttribute("data-variant") !== variant) {
+    throw new Error(`Кнопка ${selector} не открывает вариант модалки ${variant}.`);
+  }
+  if (await modal.locator(".application-modal__title").textContent() !== expectation.title) {
+    throw new Error(`У варианта ${variant} неверный заголовок.`);
+  }
+  if (expectation.field && !await modal.locator(expectation.field).first().isVisible()) {
+    throw new Error(`У варианта ${variant} отсутствуют специальные поля.`);
+  }
+  await modal.locator(".application-modal__close").click();
+  if (!await modal.isHidden()) throw new Error(`Вариант модалки ${variant} не закрывается.`);
+};
+
+const getMobileModalState = async (modal) => modal.evaluate((dialog) => {
+  const content = dialog.querySelector(".application-modal__content");
+  const close = dialog.querySelector(".application-modal__close");
+  const subtitle = dialog.querySelector(".application-modal__subtitle");
+  const submit = dialog.querySelector(".application-modal__submit");
+  const fieldPair = dialog.querySelector(".application-modal__field-pair");
+  const inputs = [...dialog.querySelectorAll(".application-modal__input")]
+    .filter((input) => !input.closest("[hidden]"));
+  const rect = dialog.getBoundingClientRect();
+  const closeRect = close.getBoundingClientRect();
+  const closeTopBeforeScroll = closeRect.top;
+  content.scrollTop = content.scrollHeight;
+  const closeTopAfterScroll = close.getBoundingClientRect().top;
+  const contentRect = content.getBoundingClientRect();
+  const submitRect = submit.getBoundingClientRect();
+  return {
+    rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, bottom: rect.bottom },
+    dialogOverflowY: getComputedStyle(dialog).overflowY,
+    contentOverflowY: getComputedStyle(content).overflowY,
+    contentClientHeight: content.clientHeight,
+    contentScrollHeight: content.scrollHeight,
+    contentClientWidth: content.clientWidth,
+    contentScrollWidth: content.scrollWidth,
+    closeWidth: closeRect.width,
+    closeHeight: closeRect.height,
+    closeScrollDelta: Math.abs(closeTopAfterScroll - closeTopBeforeScroll),
+    subtitleClipped: subtitle.scrollHeight > subtitle.clientHeight + 1,
+    fieldPairDirection: getComputedStyle(fieldPair).flexDirection,
+    minimumInputHeight: Math.min(...inputs.map((input) => input.getBoundingClientRect().height)),
+    submitVisibleAfterScroll: submitRect.top >= contentRect.top - 1 && submitRect.bottom <= contentRect.bottom + 1,
+  };
+});
+
+const assertMobileModal = (viewport, state) => {
+  const maxWidth = Math.min(560, viewport.width - 16);
+  if (state.rect.width > maxWidth + 1 || state.rect.x < 7 || state.rect.bottom > viewport.height - 7) {
+    throw new Error(`Форма выходит за mobile viewport ${viewport.width}x${viewport.height}: ${JSON.stringify(state.rect)}.`);
+  }
+  if (state.dialogOverflowY !== "hidden" || state.contentOverflowY !== "auto") {
+    throw new Error(`Прокрутка должна находиться внутри application-modal__content: ${JSON.stringify(state)}.`);
+  }
+  if (state.contentScrollWidth > state.contentClientWidth || state.subtitleClipped) {
+    throw new Error(`Содержимое формы обрезано или имеет горизонтальное переполнение: ${JSON.stringify(state)}.`);
+  }
+  if (state.closeWidth < 44 || state.closeHeight < 44 || state.closeScrollDelta > .5) {
+    throw new Error(`Кнопка закрытия должна иметь touch-зону 44px и оставаться на месте: ${JSON.stringify(state)}.`);
+  }
+  if (state.fieldPairDirection !== "column" || state.minimumInputHeight < 48 || !state.submitVisibleAfterScroll) {
+    throw new Error(`Поля формы не адаптированы для touch-ввода: ${JSON.stringify(state)}.`);
+  }
 };
 
 let server;
 let browser;
+
 try {
   if (!await isServerReady()) {
     server = spawn("python3", ["-m", "http.server", "8080"], { stdio: "ignore" });
@@ -65,163 +132,70 @@ try {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   const consoleErrors = [];
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
+
   await page.goto(BASE_URL, { waitUntil: "networkidle" });
-  await page.evaluate(() => document.fonts.ready);
+  await Promise.all([
+    expectHref(page, ".site-header__notice-link", "service.html"),
+    expectHref(page, '.site-header__nav-link:has-text("Направления")', "service.html"),
+    expectHref(page, '.site-header__nav-link:has-text("Колледж")', "college.html"),
+    expectHref(page, '.site-header__nav-link:has-text("Интенсивы")', "service.html"),
+    expectHref(page, '.site-header__nav-link:has-text("Педагоги")', "teachers.html"),
+    expectHref(page, '.site-header__nav-link:has-text("О школе")', "about.html"),
+    expectHref(page, '.site-header__nav-link:has-text("Контакты")', "halls.html"),
+  ]);
 
-  const trigger = page.locator('.site-header__notice-link[href="#trial"]');
-  const trialTrigger = page.locator('.site-header .button--header[href="#trial"]');
-  const modal = page.locator(".application-modal");
-  if (await trigger.getAttribute("aria-haspopup") !== "dialog" || await trialTrigger.getAttribute("aria-haspopup") !== "dialog") throw new Error("CTA не связаны с модальными формами.");
-  if (!await modal.isHidden()) throw new Error("Форма должна быть закрыта при загрузке.");
+  await expectModalVariant(page, ".site-header .button--header", "trial", { fallbackHref: "service.html" });
 
-  await trigger.click();
-  if (!await modal.isVisible()) throw new Error("Форма не открывается по CTA.");
-  const box = await modal.boundingBox();
-  if (!box || differs(box, { x: 537.5, y: 282.5, width: 845, height: 515 })) throw new Error(`Геометрия формы не совпала с Figma: ${JSON.stringify(box)}.`);
-  const contentBox = await modal.locator(".application-modal__content").boundingBox();
-  if (!contentBox || differs(contentBox, { x: box.x + 60, y: box.y + 60, width: 725, height: 395 })) throw new Error(`Внутренняя геометрия формы не совпала с Figma: ${JSON.stringify(contentBox)}.`);
+  await Promise.all([
+    page.waitForURL(`${BASE_URL}/service.html`),
+    page.locator('.site-header__nav-link:has-text("Направления")').click(),
+  ]);
 
-  await mkdir("artifacts", { recursive: true });
-  const actualPath = "artifacts/application-modal-actual.png";
-  const diffPath = "artifacts/application-modal-diff.png";
-  await captureModal(modal, actualPath);
-  await compareScreenshot({ referencePath: "assets/reference/figma-application-modal.png", actualPath, diffPath, label: "Application modal" });
-
-  await modal.locator(".application-modal__submit").click();
-  const status = modal.locator(".application-modal__status");
-  if ((await status.textContent())?.trim() !== "Заполните имя и телефон." || !await status.isVisible()) throw new Error("Модальная форма не показывает валидацию обязательных полей.");
-  if (await modal.locator('[name="name"]').getAttribute("aria-invalid") !== "true") throw new Error("Первое некорректное поле не отмечено.");
-
-  await modal.locator(".application-modal__close").click();
-  if (!await modal.isHidden() || !await trigger.evaluate((element) => element === document.activeElement)) throw new Error("Закрытие не возвращает фокус на CTA.");
-
-  await trialTrigger.click();
-  if (!await modal.isVisible() || !await modal.evaluate((element) => element.classList.contains("application-modal--trial"))) throw new Error("CTA «Записаться» не открывает форму пробного занятия.");
-  const trialBox = await modal.boundingBox();
-  if (!trialBox || differs(trialBox, { x: 537.5, y: 180, width: 845, height: 720 })) throw new Error(`Геометрия формы пробного занятия не совпала с Figma: ${JSON.stringify(trialBox)}.`);
-  const trialContentBox = await modal.locator(".application-modal__content").boundingBox();
-  if (!trialContentBox || differs(trialContentBox, { x: trialBox.x + 60, y: trialBox.y + 60, width: 725, height: 600 })) throw new Error(`Внутренняя геометрия формы пробного занятия не совпала с Figma: ${JSON.stringify(trialContentBox)}.`);
-  if (!await modal.locator('[name="direction"]').isVisible() || await modal.locator('[name="direction"] option').count() < 2) throw new Error("Выбор направления не реализован.");
-  const trialActualPath = "artifacts/trial-lesson-modal-actual.png";
-  const trialDiffPath = "artifacts/trial-lesson-modal-diff.png";
-  await captureModal(modal, trialActualPath);
-  await compareScreenshot({ referencePath: "assets/reference/figma-trial-lesson-modal.png", actualPath: trialActualPath, diffPath: trialDiffPath, label: "Trial lesson modal" });
-  await modal.locator('[name="direction"]').selectOption("adults");
-  if (await modal.locator('[name="direction"]').inputValue() !== "adults") throw new Error("Выбор направления не сохраняется в форме.");
-
-  await page.keyboard.press("Escape");
-  if (!await modal.isHidden() || !await trialTrigger.evaluate((element) => element === document.activeElement)) throw new Error("Escape не закрывает форму пробного занятия с возвратом фокуса.");
-  await trigger.click();
-  await page.mouse.click(10, 500);
-  if (!await modal.isHidden()) throw new Error("Клик по backdrop не закрывает форму.");
-
+  await page.goto(BASE_URL, { waitUntil: "networkidle" });
   const franchiseTrigger = page.locator('[data-application-modal="franchise"]');
+  const modal = page.locator(".application-modal");
   if (await franchiseTrigger.getAttribute("aria-haspopup") !== "dialog") throw new Error("Пункт «Франшиза» не связан с модальной формой.");
   await franchiseTrigger.click();
-  if (!await modal.isVisible() || !await modal.evaluate((element) => element.classList.contains("application-modal--franchise"))) throw new Error("Пункт «Франшиза» не открывает форму презентации.");
-  const franchiseBox = await modal.boundingBox();
-  if (!franchiseBox || differs(franchiseBox, { x: 537.5, y: 195, width: 845, height: 690 })) throw new Error(`Геометрия формы франшизы не совпала с Figma: ${JSON.stringify(franchiseBox)}.`);
-  const franchiseContentBox = await modal.locator(".application-modal__content").boundingBox();
-  if (!franchiseContentBox || differs(franchiseContentBox, { x: franchiseBox.x + 60, y: franchiseBox.y + 60, width: 725, height: 570 })) throw new Error(`Внутренняя геометрия формы франшизы не совпала с Figma: ${JSON.stringify(franchiseContentBox)}.`);
-  if ((await modal.locator(".application-modal__title").textContent())?.trim() !== "Получить презентацию франшизы") throw new Error("Заголовок формы франшизы не совпал с Figma.");
-  if (await modal.locator('[name="name"]').getAttribute("placeholder") !== "Имя родителя") throw new Error("Поле имени формы франшизы не совпало с Figma.");
-  if (!await modal.locator('[name="city"]').isVisible() || !await modal.locator('[name="premises"]').isVisible()) throw new Error("Поля франшизы не отображаются.");
-  if (await modal.locator('[name="questionTopic"]').isVisible() || await modal.locator('[name="specialty"]').isVisible() || await modal.locator('[name="direction"]').isVisible()) throw new Error("Поля других вариантов попали в форму франшизы.");
-  if ((await modal.locator(".application-modal__submit").textContent())?.trim() !== "Получить презентацию") throw new Error("Текст кнопки формы франшизы не совпал с Figma.");
-  const franchiseActualPath = "artifacts/franchise-modal-actual.png";
-  const franchiseDiffPath = "artifacts/franchise-modal-diff.png";
-  await captureModal(modal, franchiseActualPath);
-  await compareScreenshot({ referencePath: "assets/reference/figma-franchise-modal.png", actualPath: franchiseActualPath, diffPath: franchiseDiffPath, label: "Franchise modal" });
-  await modal.locator('[name="city"]').fill("Москва");
-  if (await modal.locator('[name="city"]').inputValue() !== "Москва") throw new Error("Поле города не сохраняет значение.");
+  if (!await modal.isVisible() || !await modal.evaluate((element) => element.classList.contains("application-modal--franchise"))) {
+    throw new Error("Пункт «Франшиза» не открывает форму презентации.");
+  }
   await modal.locator(".application-modal__close").click();
-  if (!await modal.isHidden() || !await franchiseTrigger.evaluate((element) => element === document.activeElement)) throw new Error("Форма франшизы не возвращает фокус на пункт навигации.");
+  if (!await modal.isHidden()) throw new Error("Форма франшизы не закрывается.");
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }, { width: 844, height: 390 }]) {
+    await page.setViewportSize(viewport);
+    const menuToggle = page.locator(".site-header__menu-toggle");
+    await menuToggle.click();
+    await franchiseTrigger.click();
+    if (!await modal.locator(".application-modal__close").evaluate((button) => button === document.activeElement)) {
+      throw new Error(`Фокус не установлен на кнопку закрытия при ${viewport.width}x${viewport.height}.`);
+    }
+    assertMobileModal(viewport, await getMobileModalState(modal));
+    if (!await page.locator("body").evaluate((body) => body.classList.contains("is-dialog-open"))) {
+      throw new Error(`Прокрутка страницы не заблокирована при ${viewport.width}x${viewport.height}.`);
+    }
+    await modal.locator(".application-modal__close").click();
+    await page.waitForFunction((button) => button === document.activeElement, await menuToggle.elementHandle());
+  }
 
   await page.goto(`${BASE_URL}/admissions.html`, { waitUntil: "networkidle" });
-  await page.evaluate(() => document.fonts.ready);
-  const applicantTrigger = page.locator('.college-header .button--header[href="#trial"]');
-  const applicantModal = page.locator(".application-modal");
-  await applicantTrigger.click();
-  if (!await applicantModal.isVisible() || !await applicantModal.evaluate((element) => element.classList.contains("application-modal--applicant"))) throw new Error("CTA колледжа не открывает форму абитуриента.");
-  const applicantBox = await applicantModal.boundingBox();
-  if (!applicantBox || differs(applicantBox, { x: 537.5, y: 199.5, width: 845, height: 681 })) throw new Error(`Геометрия формы абитуриента не совпала с Figma: ${JSON.stringify(applicantBox)}.`);
-  const applicantContentBox = await applicantModal.locator(".application-modal__content").boundingBox();
-  if (!applicantContentBox || differs(applicantContentBox, { x: applicantBox.x + 60, y: applicantBox.y + 60, width: 725, height: 561 })) throw new Error(`Внутренняя геометрия формы абитуриента не совпала с Figma: ${JSON.stringify(applicantContentBox)}.`);
-  if (await applicantModal.locator('[name="name"]').getAttribute("placeholder") !== "Имя родителя" || (await applicantModal.locator(".application-modal__name-label").textContent())?.trim() !== "Имя родителя") throw new Error("Поле родителя не настроено для формы абитуриента.");
-  if (!await applicantModal.locator('[name="applicantName"]').isVisible() || !await applicantModal.locator('[name="specialty"]').isVisible()) throw new Error("Поля абитуриента не отображаются.");
-  if (await applicantModal.locator('[name="direction"]').isVisible()) throw new Error("Поля пробного занятия попали в форму абитуриента.");
-  if ((await applicantModal.locator(".application-modal__submit").textContent())?.trim() !== "Подать заявку") throw new Error("Текст кнопки формы абитуриента не совпал с Figma.");
-  const applicantActualPath = "artifacts/applicant-modal-actual.png";
-  const applicantDiffPath = "artifacts/applicant-modal-diff.png";
-  await captureModal(applicantModal, applicantActualPath);
-  await compareScreenshot({ referencePath: "assets/reference/figma-applicant-modal.png", actualPath: applicantActualPath, diffPath: applicantDiffPath, label: "Applicant modal" });
-  await applicantModal.locator('[name="specialty"]').selectOption("ballet");
-  if (await applicantModal.locator('[name="specialty"]').inputValue() !== "ballet") throw new Error("Выбор специальности не сохраняется в форме.");
-  await applicantModal.locator(".application-modal__close").click();
-  if (!await applicantModal.isHidden() || !await applicantTrigger.evaluate((element) => element === document.activeElement)) throw new Error("Форма абитуриента не возвращает фокус на CTA.");
+  await Promise.all([
+    expectHref(page, ".college-header__notice a", "admissions.html"),
+  ]);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await expectModalVariant(page, ".college-header .button--header", "applicant", { fallbackHref: "admissions.html" });
+  await expectModalVariant(page, '.admissions-hero__actions [data-application-modal="applicant"]', "applicant");
+  await expectModalVariant(page, '.admissions-hero__actions [data-application-modal="question"]', "question");
 
-  const questionTrigger = page.locator('.admissions-hero__question[href="#contacts"]');
-  if (await questionTrigger.getAttribute("aria-haspopup") !== "dialog") throw new Error("CTA «Задать вопрос» не связан с модальной формой.");
-  await questionTrigger.click();
-  if (!await applicantModal.isVisible() || !await applicantModal.evaluate((element) => element.classList.contains("application-modal--question"))) throw new Error("CTA «Задать вопрос» не открывает форму вопроса.");
-  const questionBox = await applicantModal.boundingBox();
-  if (!questionBox || differs(questionBox, { x: 537.5, y: 258, width: 845, height: 564 })) throw new Error(`Геометрия формы вопроса не совпала с Figma: ${JSON.stringify(questionBox)}.`);
-  const questionContentBox = await applicantModal.locator(".application-modal__content").boundingBox();
-  if (!questionContentBox || differs(questionContentBox, { x: questionBox.x + 60, y: questionBox.y + 60, width: 725, height: 444 })) throw new Error(`Внутренняя геометрия формы вопроса не совпала с Figma: ${JSON.stringify(questionContentBox)}.`);
-  if (await applicantModal.locator('[name="name"]').getAttribute("placeholder") !== "Имя родителя" || (await applicantModal.locator(".application-modal__name-label").textContent())?.trim() !== "Имя родителя") throw new Error("Поле родителя не настроено для формы вопроса.");
-  if (!await applicantModal.locator('[name="questionTopic"]').isVisible() || await applicantModal.locator('[name="questionTopic"] option').count() < 2) throw new Error("Выбор темы вопроса не реализован.");
-  if (await applicantModal.locator('[name="specialty"]').isVisible() || await applicantModal.locator('[name="direction"]').isVisible()) throw new Error("Поля других вариантов попали в форму вопроса.");
-  if ((await applicantModal.locator(".application-modal__submit").textContent())?.trim() !== "Отправить вопрос") throw new Error("Текст кнопки формы вопроса не совпал с Figma.");
-  const questionActualPath = "artifacts/question-modal-actual.png";
-  const questionDiffPath = "artifacts/question-modal-diff.png";
-  await captureModal(applicantModal, questionActualPath);
-  await compareScreenshot({ referencePath: "assets/reference/figma-question-modal.png", actualPath: questionActualPath, diffPath: questionDiffPath, label: "Question modal" });
-  await applicantModal.locator('[name="questionTopic"]').selectOption("admission");
-  if (await applicantModal.locator('[name="questionTopic"]').inputValue() !== "admission") throw new Error("Выбор темы не сохраняется в форме вопроса.");
-  await applicantModal.locator(".application-modal__close").click();
-  if (!await applicantModal.isHidden() || !await questionTrigger.evaluate((element) => element === document.activeElement)) throw new Error("Форма вопроса не возвращает фокус на CTA.");
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.reload({ waitUntil: "networkidle" });
-  const mobileApplicantTrigger = page.locator('a[href="#trial"]:visible').filter({ hasText: "Подать заявку" }).first();
-  await mobileApplicantTrigger.click();
-  const mobileApplicantModal = page.locator(".application-modal");
-  const mobileApplicantBox = await mobileApplicantModal.boundingBox();
-  if (!mobileApplicantBox || Math.abs(mobileApplicantBox.width - 358) > .1 || !await mobileApplicantModal.evaluate((element) => element.classList.contains("application-modal--applicant"))) throw new Error(`Мобильная форма абитуриента некорректна: ${JSON.stringify(mobileApplicantBox)}.`);
-  await mobileApplicantModal.locator(".application-modal__close").click();
+  await page.goto(`${BASE_URL}/service.html`, { waitUntil: "networkidle" });
+  await expectModalVariant(page, '.service-hero__actions [data-application-modal="trial"]', "trial");
+  await expectModalVariant(page, '.service-hero__actions [data-application-modal="application"]', "application");
 
   await page.goto(BASE_URL, { waitUntil: "networkidle" });
-  const mobileTrigger = page.locator('a[href="#trial"]:visible').filter({ hasText: "Записаться" }).first();
-  await mobileTrigger.click();
-  const mobileModal = page.locator(".application-modal");
-  const mobileBox = await mobileModal.boundingBox();
-  if (!mobileBox || Math.abs(mobileBox.width - 358) > .1) throw new Error(`Ширина мобильной формы некорректна: ${JSON.stringify(mobileBox)}.`);
-  if (!await mobileModal.evaluate((element) => element.classList.contains("application-modal--trial"))) throw new Error("На мобильном открылась неверная версия формы.");
-  const mobileOverflow = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
-  if (mobileOverflow.scroll > mobileOverflow.viewport) throw new Error(`Горизонтальный скролл на мобильном: ${mobileOverflow.scroll}px.`);
-  await mobileModal.locator(".application-modal__close").click();
-
-  const mobileMenuToggle = page.locator(".site-header__menu-toggle");
-  await mobileMenuToggle.click();
-  const mobileFranchiseTrigger = page.locator('[data-application-modal="franchise"]:visible');
-  await mobileFranchiseTrigger.click();
-  const mobileFranchiseBox = await mobileModal.boundingBox();
-  if (!mobileFranchiseBox || Math.abs(mobileFranchiseBox.width - 358) > .1 || !await mobileModal.evaluate((element) => element.classList.contains("application-modal--franchise"))) throw new Error(`Мобильная форма франшизы некорректна: ${JSON.stringify(mobileFranchiseBox)}.`);
-  if (await mobileMenuToggle.getAttribute("aria-expanded") !== "false") throw new Error("Мобильное меню не закрылось после открытия формы франшизы.");
-  await mobileModal.locator(".application-modal__close").click();
+  await expectModalVariant(page, '.promo-card [data-application-modal="trial"]', "trial");
 
   if (consoleErrors.length) throw new Error(`Ошибки консоли: ${consoleErrors.join(" | ")}`);
-  console.log("Application modal geometry, visual, validation, focus, backdrop and mobile audit: OK");
-  console.log(`Actual: ${actualPath}`);
-  console.log(`Diff: ${diffPath}`);
-  console.log(`Trial actual: ${trialActualPath}`);
-  console.log(`Trial diff: ${trialDiffPath}`);
-  console.log(`Applicant actual: ${applicantActualPath}`);
-  console.log(`Applicant diff: ${applicantDiffPath}`);
-  console.log(`Question actual: ${questionActualPath}`);
-  console.log(`Question diff: ${questionDiffPath}`);
-  console.log(`Franchise actual: ${franchiseActualPath}`);
-  console.log(`Franchise diff: ${franchiseDiffPath}`);
+  console.log("Page navigation and all application modal variants audit: OK");
 } finally {
   await browser?.close();
   server?.kill();

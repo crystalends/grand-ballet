@@ -31,8 +31,15 @@ npm run test:about
 npm run test:halls
 npm run test:privacy
 npm run test:404
+npm run test:responsive
 npm run test:interactions
 npm run test:links
+```
+
+`test:responsive` проверяет все 15 страниц на ширинах от 320 до 1600 px: горизонтальное переполнение, сломанные изображения, элементы управления за пределами экрана и ошибки консоли. Для точечного прогона можно задать, например:
+
+```bash
+RESPONSIVE_AUDIT_VIEWPORTS=390,1024,1440 RESPONSIVE_AUDIT_PAGES=index.html,service.html npm run test:responsive
 ```
 
 Дополнительно проверьте клавиатурную навигацию по ссылкам, аккордеону FAQ и форме, а также отсутствие ошибок в консоли браузера.

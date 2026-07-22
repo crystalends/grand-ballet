@@ -3,10 +3,10 @@ const dropdowns = [
     key: "applicants",
     triggerLabel: "Абитуриентам",
     items: [
-      ["Поступление", "admissions.html#admission"],
-      ["Специальности", "admissions.html#admissions-programs-title"],
-      ["Вступительные испытания", "admissions.html#admissions-assessment-title"],
-      ["Документы для поступления", "admissions.html#admissions-documents-title"],
+      ["Поступление", "admissions.html"],
+      ["Специальности", "admissions.html"],
+      ["Вступительные испытания", "admissions.html"],
+      ["Документы для поступления", "admissions.html"],
     ],
   },
   {
@@ -14,13 +14,13 @@ const dropdowns = [
     triggerLabel: "Сведения об образовательной организации",
     items: [
       ["Сведения об образовательной организации", "license.html"],
-      ["Образование", "license.html#system-title"],
-      ["Документы", "license.html#documents-title"],
+      ["Образование", "license.html"],
+      ["Документы", "license.html"],
       ["Руководство и педагогический состав", "teachers.html"],
       ["Материально-техническое обеспечение", "halls.html"],
-      ["Платные образовательные услуги", "index.html#directions"],
-      ["Вакантные места", "admissions.html#admission"],
-      ["Доступная среда", "license.html#importance-title"],
+      ["Платные образовательные услуги", "service.html"],
+      ["Вакантные места", "admissions.html"],
+      ["Доступная среда", "license.html"],
     ],
   },
 ];

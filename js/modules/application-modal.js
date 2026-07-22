@@ -23,6 +23,8 @@ const modalContent = {
   },
 };
 
+const modalVariants = new Set(Object.keys(modalContent));
+
 const createCloseIcon = () => `
   <span class="application-modal__close-icon" aria-hidden="true">
     <img class="application-modal__close-line application-modal__close-line--horizontal" src="assets/images/application-modal-close-line-a.svg" alt="">
@@ -134,13 +136,16 @@ const createModal = () => {
   return modal;
 };
 
-const getVariant = (trigger) => {
-  const label = trigger.textContent;
-  if (trigger.dataset.applicationModal === "franchise") return "franchise";
-  if (/задать вопрос/i.test(label)) return "question";
-  if (/записаться/i.test(label)) return "trial";
-  if (document.querySelector(".college-header") && /(подать|оставить) заявку/i.test(label)) return "applicant";
-  return "application";
+const getVariant = (trigger) => (
+  modalVariants.has(trigger.dataset.applicationModal)
+    ? trigger.dataset.applicationModal
+    : "application"
+);
+
+const restoreTriggerFocus = (trigger) => {
+  const fallback = document.querySelector(".site-header__menu-toggle, .college-header__menu-toggle");
+  const focusTarget = trigger?.getClientRects().length ? trigger : fallback;
+  focusTarget?.focus();
 };
 
 const setModalVariant = (modal, variant) => {
@@ -173,9 +178,8 @@ const setModalVariant = (modal, variant) => {
 };
 
 export const initApplicationModal = (triggerElements) => {
-  const triggers = Array.from(triggerElements || []).filter((trigger) => (
-    trigger.dataset.applicationModal || trigger.getAttribute("href") === "#trial" || /задать вопрос/i.test(trigger.textContent)
-  ));
+  const triggers = Array.from(triggerElements || [])
+    .filter((trigger) => modalVariants.has(trigger.dataset.applicationModal));
   if (!triggers.length) return null;
 
   const modal = createModal();
@@ -211,8 +215,9 @@ export const initApplicationModal = (triggerElements) => {
   });
   modal.addEventListener("close", () => {
     document.body.classList.remove("is-dialog-open");
-    activeTrigger?.focus();
+    const trigger = activeTrigger;
     activeTrigger = null;
+    requestAnimationFrame(() => restoreTriggerFocus(trigger));
   });
 
   return modal;

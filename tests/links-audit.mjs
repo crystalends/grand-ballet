@@ -3,10 +3,6 @@ import path from "node:path";
 
 const htmlFiles = (await readdir(".")).filter((file) => file.endsWith(".html"));
 const htmlByFile = new Map(await Promise.all(htmlFiles.map(async (file) => [file, await readFile(file, "utf8")])));
-const idsByFile = new Map([...htmlByFile].map(([file, html]) => [
-  file,
-  new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1])),
-]));
 const errors = [];
 
 for (const [file, html] of htmlByFile) {
@@ -17,25 +13,36 @@ for (const [file, html] of htmlByFile) {
       errors.push(`${file}: пустая ссылка ${href}`);
       continue;
     }
+    if (href.includes("#")) {
+      errors.push(`${file}: локальная ссылка должна вести на страницу без якоря: ${href}`);
+      continue;
+    }
 
-    const [target = "", fragment] = href.split("#");
-    const targetFile = target || file;
+    const targetFile = href;
 
     if (!targetFile || (!htmlByFile.has(targetFile) && !path.extname(targetFile))) {
       errors.push(`${file}: отсутствует файл ${href}`);
       continue;
     }
 
-    if (target && !htmlByFile.has(targetFile)) {
+    if (!htmlByFile.has(targetFile)) {
       try {
         await readFile(targetFile);
       } catch {
         errors.push(`${file}: отсутствует файл ${href}`);
       }
     }
+  }
 
-    if (fragment && targetFile.endsWith(".html") && !idsByFile.get(targetFile)?.has(fragment)) {
-      errors.push(`${file}: отсутствует якорь ${href}`);
+  const navigationMarkup = [...html.matchAll(/<(?:header|footer)\b[^>]*class="[^"]*(?:site|college)-(?:header|footer)[^"]*"[^>]*>[\s\S]*?<\/(?:header|footer)>/g)]
+    .map((match) => match[0])
+    .join("\n");
+
+  for (const match of navigationMarkup.matchAll(/href="([^"]+)"/g)) {
+    const href = match[1];
+    if (/^(?:data:|https?:|tel:|mailto:)/.test(href)) continue;
+    if (!/^[^#]+\.html$/.test(href)) {
+      errors.push(`${file}: ссылка в header/footer должна вести на страницу без якоря: ${href}`);
     }
   }
 }
