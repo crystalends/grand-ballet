@@ -34,15 +34,26 @@ for (const [file, html] of htmlByFile) {
     }
   }
 
-  const navigationMarkup = [...html.matchAll(/<(?:header|footer)\b[^>]*class="[^"]*(?:site|college)-(?:header|footer)[^"]*"[^>]*>[\s\S]*?<\/(?:header|footer)>/g)]
-    .map((match) => match[0])
-    .join("\n");
+  const navigationSections = [...html.matchAll(/<(?:header|footer)\b[^>]*class="[^"]*(?:site|college)-(?:header|footer)[^"]*"[^>]*>[\s\S]*?<\/(?:header|footer)>/g)]
+    .map((match) => match[0]);
 
-  for (const match of navigationMarkup.matchAll(/href="([^"]+)"/g)) {
-    const href = match[1];
-    if (/^(?:data:|https?:|tel:|mailto:)/.test(href)) continue;
-    if (!/^[^#]+\.html$/.test(href)) {
-      errors.push(`${file}: ссылка в header/footer должна вести на страницу без якоря: ${href}`);
+  for (const navigationMarkup of navigationSections) {
+    for (const match of navigationMarkup.matchAll(/href="([^"]+)"/g)) {
+      const href = match[1];
+      if (/^(?:data:|https?:|tel:|mailto:)/.test(href)) continue;
+      if (!/^[^#]+\.html$/.test(href)) {
+        errors.push(`${file}: ссылка в header/footer должна вести на страницу без якоря: ${href}`);
+      }
+    }
+
+    if (navigationMarkup.includes("Франшиза")
+      && !/<a\b[^>]*href="franchise\.html"[^>]*>Франшиза<\/a>/.test(navigationMarkup)) {
+      errors.push(`${file}: пункт «Франшиза» в header/footer должен быть ссылкой на franchise.html`);
+    }
+
+    if (navigationMarkup.includes("Контакты")
+      && !/<a\b[^>]*href="contacts\.html"[^>]*>Контакты<\/a>/.test(navigationMarkup)) {
+      errors.push(`${file}: пункт «Контакты» в header/footer должен быть ссылкой на contacts.html`);
     }
   }
 }

@@ -14,6 +14,7 @@ npm run serve
 - `http://127.0.0.1:8080` — страница направлений;
 - `http://127.0.0.1:8080/service.html` — страница услуги;
 - `http://127.0.0.1:8080/license.html` — лицензия и документы.
+- `http://127.0.0.1:8080/directions.html` — направления школы.
 - `http://127.0.0.1:8080/about.html` — о школе.
 - `http://127.0.0.1:8080/halls.html` — залы школы.
 - `http://127.0.0.1:8080/privacy.html` — политика конфиденциальности.
@@ -27,6 +28,7 @@ npm run serve
 npm run test:visual
 npm run test:visual:service
 npm run test:visual:license
+npm run test:directions
 npm run test:about
 npm run test:halls
 npm run test:privacy

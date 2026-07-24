@@ -136,37 +136,35 @@ try {
   await page.goto(BASE_URL, { waitUntil: "networkidle" });
   await Promise.all([
     expectHref(page, ".site-header__notice-link", "service.html"),
-    expectHref(page, '.site-header__nav-link:has-text("Направления")', "service.html"),
+    expectHref(page, '.site-header__nav-link:has-text("Направления")', "directions.html"),
     expectHref(page, '.site-header__nav-link:has-text("Колледж")', "college.html"),
     expectHref(page, '.site-header__nav-link:has-text("Интенсивы")', "service.html"),
     expectHref(page, '.site-header__nav-link:has-text("Педагоги")', "teachers.html"),
     expectHref(page, '.site-header__nav-link:has-text("О школе")', "about.html"),
-    expectHref(page, '.site-header__nav-link:has-text("Контакты")', "halls.html"),
+    expectHref(page, '.site-header__nav-link:has-text("Франшиза")', "franchise.html"),
+    expectHref(page, '.site-header__nav-link:has-text("Контакты")', "contacts.html"),
   ]);
 
   await expectModalVariant(page, ".site-header .button--header", "trial", { fallbackHref: "service.html" });
 
   await Promise.all([
-    page.waitForURL(`${BASE_URL}/service.html`),
+    page.waitForURL(`${BASE_URL}/directions.html`),
     page.locator('.site-header__nav-link:has-text("Направления")').click(),
   ]);
 
   await page.goto(BASE_URL, { waitUntil: "networkidle" });
-  const franchiseTrigger = page.locator('[data-application-modal="franchise"]');
+  await Promise.all([
+    page.waitForURL(`${BASE_URL}/franchise.html`),
+    page.locator('.site-header__nav-link:has-text("Франшиза")').click(),
+  ]);
+
+  await page.goto(BASE_URL, { waitUntil: "networkidle" });
+  const mobileTrigger = page.locator('.promo-card [data-application-modal="trial"]').first();
   const modal = page.locator(".application-modal");
-  if (await franchiseTrigger.getAttribute("aria-haspopup") !== "dialog") throw new Error("Пункт «Франшиза» не связан с модальной формой.");
-  await franchiseTrigger.click();
-  if (!await modal.isVisible() || !await modal.evaluate((element) => element.classList.contains("application-modal--franchise"))) {
-    throw new Error("Пункт «Франшиза» не открывает форму презентации.");
-  }
-  await modal.locator(".application-modal__close").click();
-  if (!await modal.isHidden()) throw new Error("Форма франшизы не закрывается.");
 
   for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }, { width: 844, height: 390 }]) {
     await page.setViewportSize(viewport);
-    const menuToggle = page.locator(".site-header__menu-toggle");
-    await menuToggle.click();
-    await franchiseTrigger.click();
+    await mobileTrigger.click();
     if (!await modal.locator(".application-modal__close").evaluate((button) => button === document.activeElement)) {
       throw new Error(`Фокус не установлен на кнопку закрытия при ${viewport.width}x${viewport.height}.`);
     }
@@ -175,7 +173,7 @@ try {
       throw new Error(`Прокрутка страницы не заблокирована при ${viewport.width}x${viewport.height}.`);
     }
     await modal.locator(".application-modal__close").click();
-    await page.waitForFunction((button) => button === document.activeElement, await menuToggle.elementHandle());
+    await page.waitForFunction((button) => button === document.activeElement, await mobileTrigger.elementHandle());
   }
 
   await page.goto(`${BASE_URL}/admissions.html`, { waitUntil: "networkidle" });

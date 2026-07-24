@@ -26,6 +26,9 @@
     "test:application-modal": "node tests/application-modal-audit.mjs",
     "test:director": "node tests/director-audit.mjs",
     "test:preparation": "node tests/preparation-audit.mjs",
+    "test:directions": "node tests/visual-audit-directions.mjs",
+    "test:franchise": "node tests/franchise-audit.mjs",
+    "test:contacts": "node tests/contacts-audit.mjs",
     "test:interactions": "node tests/interaction-audit.mjs",
     "test:responsive": "node tests/responsive-audit.mjs",
     "test:links": "node tests/links-audit.mjs"

@@ -23,6 +23,7 @@ const DEFAULT_PAGES = [
   "admissions.html",
   "director.html",
   "preparation.html",
+  "directions.html",
 ];
 const VIEWPORTS = process.env.RESPONSIVE_AUDIT_VIEWPORTS
   ? process.env.RESPONSIVE_AUDIT_VIEWPORTS.split(",").map(Number)
