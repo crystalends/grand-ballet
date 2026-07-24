@@ -11,6 +11,7 @@ const DEFAULT_PAGES = [
   "index.html",
   "service.html",
   "teachers.html",
+  "college-teachers.html",
   "awards.html",
   "license.html",
   "about.html",
@@ -24,6 +25,8 @@ const DEFAULT_PAGES = [
   "director.html",
   "preparation.html",
   "directions.html",
+  "franchise.html",
+  "contacts.html",
 ];
 const VIEWPORTS = process.env.RESPONSIVE_AUDIT_VIEWPORTS
   ? process.env.RESPONSIVE_AUDIT_VIEWPORTS.split(",").map(Number)

@@ -11,10 +11,12 @@ npm run serve
 
 Откройте:
 
-- `http://127.0.0.1:8080` — страница направлений;
+- `http://127.0.0.1:8080` — главная страница;
 - `http://127.0.0.1:8080/service.html` — страница услуги;
 - `http://127.0.0.1:8080/license.html` — лицензия и документы.
 - `http://127.0.0.1:8080/directions.html` — направления школы.
+- `http://127.0.0.1:8080/teachers.html` — педагоги школы.
+- `http://127.0.0.1:8080/college-teachers.html` — педагоги колледжа.
 - `http://127.0.0.1:8080/about.html` — о школе.
 - `http://127.0.0.1:8080/halls.html` — залы школы.
 - `http://127.0.0.1:8080/privacy.html` — политика конфиденциальности.
@@ -25,20 +27,11 @@ npm run serve
 ## Проверка
 
 ```bash
-npm run test:visual
-npm run test:visual:service
-npm run test:visual:license
-npm run test:directions
-npm run test:about
-npm run test:halls
-npm run test:privacy
-npm run test:404
-npm run test:responsive
-npm run test:interactions
-npm run test:links
+npm run test:quality
+npm run test:visual:all
 ```
 
-`test:responsive` проверяет все 15 страниц на ширинах от 320 до 1600 px: горизонтальное переполнение, сломанные изображения, элементы управления за пределами экрана и ошибки консоли. Для точечного прогона можно задать, например:
+`test:quality` запускает BEM-, asset-, link-, responsive- и interaction-аудиты. `test:responsive` проверяет все 19 страниц на 14 ширинах от 320 до 1600 px: горизонтальное переполнение, сломанные изображения, элементы управления за пределами экрана и ошибки консоли. Для точечного прогона можно задать, например:
 
 ```bash
 RESPONSIVE_AUDIT_VIEWPORTS=390,1024,1440 RESPONSIVE_AUDIT_PAGES=index.html,service.html npm run test:responsive

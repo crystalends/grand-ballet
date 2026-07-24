@@ -1,7 +1,6 @@
 const dropdowns = [
   {
     key: "applicants",
-    triggerLabel: "Абитуриентам",
     items: [
       ["Поступление", "admissions.html"],
       ["Специальности", "admissions.html"],
@@ -11,7 +10,6 @@ const dropdowns = [
   },
   {
     key: "official",
-    triggerLabel: "Сведения об образовательной организации",
     items: [
       ["Сведения об образовательной организации", "license.html"],
       ["Образование", "license.html"],
@@ -48,10 +46,7 @@ const createMenu = ({ items, key }, id) => {
   return menu;
 };
 
-const findTrigger = (header, label) => {
-  const nav = header.querySelector(".college-header__nav");
-  return nav && [...nav.children].find((element) => element.matches("a") && element.textContent.trim() === label);
-};
+const findTrigger = (header, key) => header.querySelector(`[data-header-dropdown="${key}"]`);
 
 const setDropdownState = ({ wrapper, trigger, menu }, isOpen, focusFirst = false) => {
   wrapper.classList.toggle("college-header__dropdown--open", isOpen);
@@ -61,7 +56,7 @@ const setDropdownState = ({ wrapper, trigger, menu }, isOpen, focusFirst = false
 };
 
 const initHeaderDropdown = (header, config, headerIndex) => {
-  const trigger = findTrigger(header, config.triggerLabel);
+  const trigger = findTrigger(header, config.key);
   if (!trigger) return null;
 
   const wrapper = document.createElement("div");

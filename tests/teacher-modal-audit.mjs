@@ -84,7 +84,7 @@ try {
     headless: true,
   });
 
-  for (const file of ["index.html", "service.html", "about.html", "college.html", "teachers.html"]) {
+  for (const file of ["index.html", "service.html", "about.html", "college.html", "teachers.html", "college-teachers.html"]) {
     const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
     const consoleErrors = [];
     page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });

@@ -1,3 +1,283 @@
+/**
+ * Swiper 14.0.5
+ * Most modern mobile touch slider and framework with hardware accelerated transitions
+ * https://swiperjs.com
+ *
+ * Copyright 2014-2026 Vladimir Kharlampidi
+ *
+ * Released under the MIT License
+ *
+ * Released on: July 9, 2026
+ */
+
+:root {
+  --swiper-theme-color: #007aff;
+  /*
+  --swiper-preloader-color: var(--swiper-theme-color);
+  --swiper-wrapper-transition-timing-function: initial;
+  */
+}
+:host {
+  position: relative;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  z-index: 1;
+}
+.swiper {
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+  overflow: hidden;
+  list-style: none;
+  padding: 0;
+  /* Fix of Webkit flickering */
+  z-index: 1;
+  display: block;
+}
+.swiper-vertical > .swiper-wrapper {
+  flex-direction: column;
+}
+.swiper-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  display: flex;
+  transition-property: transform;
+  transition-timing-function: var(--swiper-wrapper-transition-timing-function, initial);
+  box-sizing: content-box;
+}
+.swiper-android .swiper-slide,
+.swiper-ios .swiper-slide,
+.swiper-wrapper {
+  transform: translate3d(0px, 0, 0);
+}
+.swiper-horizontal {
+  touch-action: pan-y;
+}
+.swiper-vertical {
+  touch-action: pan-x;
+}
+.swiper-slide {
+  flex-shrink: 0;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transition-property: transform;
+  display: block;
+}
+.swiper-slide-invisible-blank {
+  visibility: hidden;
+}
+/* Auto Height */
+.swiper-autoheight,
+.swiper-autoheight .swiper-slide {
+  height: auto;
+}
+.swiper-autoheight .swiper-wrapper {
+  align-items: flex-start;
+  transition-property: transform, height;
+}
+.swiper-backface-hidden .swiper-slide {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+/* 3D Effects */
+.swiper-3d.swiper-css-mode .swiper-wrapper {
+  perspective: 1200px;
+}
+.swiper-3d .swiper-wrapper {
+  transform-style: preserve-3d;
+}
+.swiper-3d {
+  perspective: 1200px;
+  .swiper-slide,
+  .swiper-cube-shadow {
+    transform-style: preserve-3d;
+  }
+}
+
+/* CSS Mode */
+.swiper-css-mode {
+  > .swiper-wrapper {
+    overflow: auto;
+    scrollbar-width: none; /* For Firefox */
+    -ms-overflow-style: none; /* For Internet Explorer and Edge */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+  > .swiper-wrapper > .swiper-slide {
+    scroll-snap-align: start start;
+  }
+  &.swiper-horizontal {
+    > .swiper-wrapper {
+      scroll-snap-type: x mandatory;
+    }
+    > .swiper-wrapper > .swiper-slide:first-child {
+      margin-inline-start: var(--swiper-slides-offset-before);
+      scroll-margin-inline-start: var(--swiper-slides-offset-before);
+    }
+    > .swiper-wrapper > .swiper-slide:last-child {
+      margin-inline-end: var(--swiper-slides-offset-after);
+    }
+  }
+  &.swiper-vertical {
+    > .swiper-wrapper {
+      scroll-snap-type: y mandatory;
+    }
+    > .swiper-wrapper > .swiper-slide:first-child {
+      margin-block-start: var(--swiper-slides-offset-before);
+      scroll-margin-block-start: var(--swiper-slides-offset-before);
+    }
+    > .swiper-wrapper > .swiper-slide:last-child {
+      margin-block-end: var(--swiper-slides-offset-after);
+    }
+  }
+  &.swiper-free-mode {
+    > .swiper-wrapper {
+      scroll-snap-type: none;
+    }
+    > .swiper-wrapper > .swiper-slide {
+      scroll-snap-align: none;
+    }
+  }
+  &.swiper-centered {
+    > .swiper-wrapper::before {
+      content: "";
+      flex-shrink: 0;
+      order: 9999;
+    }
+    > .swiper-wrapper > .swiper-slide {
+      scroll-snap-align: center center;
+      scroll-snap-stop: always;
+    }
+  }
+  &.swiper-centered.swiper-horizontal {
+    > .swiper-wrapper > .swiper-slide:first-child {
+      margin-inline-start: var(--swiper-centered-offset-before);
+    }
+    > .swiper-wrapper::before {
+      height: 100%;
+      min-height: 1px;
+      width: var(--swiper-centered-offset-after);
+    }
+  }
+  &.swiper-centered.swiper-vertical {
+    > .swiper-wrapper > .swiper-slide:first-child {
+      margin-block-start: var(--swiper-centered-offset-before);
+    }
+    > .swiper-wrapper::before {
+      width: 100%;
+      min-width: 1px;
+      height: var(--swiper-centered-offset-after);
+    }
+  }
+}
+
+/* Slide styles start */
+/* 3D Shadows */
+.swiper-3d {
+  .swiper-slide-shadow,
+  .swiper-slide-shadow-left,
+  .swiper-slide-shadow-right,
+  .swiper-slide-shadow-top,
+  .swiper-slide-shadow-bottom,
+  .swiper-slide-shadow,
+  .swiper-slide-shadow-left,
+  .swiper-slide-shadow-right,
+  .swiper-slide-shadow-top,
+  .swiper-slide-shadow-bottom {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .swiper-slide-shadow {
+    background: rgba(0, 0, 0, 0.15);
+  }
+  .swiper-slide-shadow-left {
+    background-image: linear-gradient(to left, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
+  }
+  .swiper-slide-shadow-right {
+    background-image: linear-gradient(to right, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
+  }
+  .swiper-slide-shadow-top {
+    background-image: linear-gradient(to top, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
+  }
+  .swiper-slide-shadow-bottom {
+    background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
+  }
+}
+.swiper-lazy-preloader {
+  width: 42px;
+  height: 42px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-left: -21px;
+  margin-top: -21px;
+  z-index: 10;
+  transform-origin: 50%;
+  box-sizing: border-box;
+  border: 4px solid var(--swiper-preloader-color, var(--swiper-theme-color));
+  border-radius: 50%;
+  border-top-color: transparent;
+}
+.swiper:not(.swiper-watch-progress),
+.swiper-watch-progress .swiper-slide-visible {
+  .swiper-lazy-preloader {
+    animation: swiper-preloader-spin 1s infinite linear;
+  }
+}
+.swiper-lazy-preloader-white {
+  --swiper-preloader-color: #fff;
+}
+.swiper-lazy-preloader-black {
+  --swiper-preloader-color: #000;
+}
+@keyframes swiper-preloader-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+/* Slide styles end */
+
+/* a11y */
+.swiper .swiper-notification {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  opacity: 0;
+  z-index: -1000;
+}
+
+.carousel__viewport.swiper-initialized {
+  overflow: hidden;
+  overscroll-behavior-inline: contain;
+}
+
+.review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 240px;
+  flex: 0 0 240px;
+}
+
+.review-card--wide {
+  width: 500px;
+  flex-basis: 500px;
+}
+
 @font-face {
   font-family: "Manrope";
   src: url("assets/fonts/manrope-400.ttf") format("truetype");
@@ -501,14 +781,19 @@ textarea:focus-visible,
 .teaching-approach-card h3 { margin-bottom: 10px; font-size: 20px; font-weight: 600; line-height: 28px; }
 
 .age-approach { height: 533px; margin-top: 100px; }
+.age-approach--school { height: 633px; }
 .age-approach__title { text-align: center; }
 .age-approach__groups { display: grid; grid-template-columns: repeat(2, 760px); gap: 20px; height: 435px; margin-top: 40px; }
+.age-approach__groups--school { height: 535px; }
 .age-group { display: flex; flex-direction: column; gap: 20px; width: 760px; height: 435px; padding: 20px; overflow: hidden; border-radius: var(--radius-large); background: var(--color-surface); }
+.age-group--school { height: 535px; }
 .age-group__intro { display: flex; flex-direction: column; gap: 10px; width: 720px; height: 123px; }
 .age-group__intro > h3 { font-size: 24px; font-weight: 600; line-height: 32px; }
 .age-group__intro > div { display: flex; flex-direction: column; gap: 5px; }
 .age-group__grid { display: grid; grid-template-columns: repeat(2, 350px); grid-template-rows: repeat(2, 116px); gap: 20px; width: 720px; height: 252px; }
+.age-group__grid--school { grid-template-rows: repeat(2, 166px); height: 352px; }
 .age-card { display: flex; flex-direction: column; width: 350px; height: 116px; padding: 20px; border-radius: var(--radius-card); background: rgba(219, 176, 125, .2); backdrop-filter: blur(5px); }
+.age-card--school { height: 166px; }
 .age-card > div { display: flex; flex-direction: column; gap: 10px; }
 .age-card h3 { font-size: 20px; font-weight: 600; line-height: 28px; }
 
@@ -519,8 +804,8 @@ textarea:focus-visible,
 .applicant-training__list { display: grid; grid-template-columns: repeat(3, 271px); grid-template-rows: repeat(2, 64px); gap: 20px; width: 854px; height: 148px; margin: 0; padding: 0; list-style: none; }
 .applicant-training__list li { display: flex; align-items: center; justify-content: center; padding: 10px; border-radius: var(--radius-card); background: rgba(244, 210, 171, .2); font-size: 18px; text-align: center; backdrop-filter: blur(5px); }
 .benefits--teachers { margin-top: 100px; }
-.teachers-page__trial,
-.teachers-page__footer { position: relative; left: 20px; }
+.teachers-page--college .teachers-page__trial,
+.teachers-page--college .teachers-page__footer { position: relative; left: 20px; }
 
 /* Awards page */
 .awards-hero { height: 315px; margin-top: 10px; }
@@ -567,8 +852,8 @@ textarea:focus-visible,
   .teacher-directory__grid { height: auto; }
   .applicant-training { gap: 28px; padding: 28px 20px; }
   .applicant-training__image { aspect-ratio: 506 / 402; }
-  .teachers-page__trial,
-  .teachers-page__footer { left: 0; }
+  .teachers-page--college .teachers-page__trial,
+  .teachers-page--college .teachers-page__footer { left: 0; }
 }
 
 .is-dialog-open { overflow: hidden; }
