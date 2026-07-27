@@ -32,6 +32,7 @@
     "test:bem": "node tests/bem-audit.mjs",
     "test:assets": "node tests/assets-audit.mjs",
     "test:interactions": "node tests/interaction-audit.mjs",
+    "test:content": "node tests/content-resilience-audit.mjs",
     "test:responsive": "node tests/responsive-audit.mjs",
     "test:links": "node tests/links-audit.mjs",
     "test:visual:all": "npm run test:visual && npm run test:visual:service && npm run test:visual:license && npm run test:about && npm run test:halls && npm run test:privacy && npm run test:404 && npm run test:teachers && npm run test:awards && npm run test:news && npm run test:news-detail && npm run test:college && npm run test:admissions && npm run test:director && npm run test:preparation && npm run test:directions && npm run test:franchise && npm run test:contacts",
