@@ -5357,6 +5357,13 @@ html:has(.preparation-page) { overflow-x: hidden; }
   .journey-card h3 { font-size: 25px; line-height: 1.12; }
 }
 
+@media (max-width: 430px) {
+  .home-hero .home-hero__title {
+    font-size: clamp(32px, 8.7vw, 36px);
+    line-height: 1.06;
+  }
+}
+
 @media (min-width: 1281px) and (max-width: 1600px) {
   .preparation-outcomes__visual > p { height: auto; }
 }
