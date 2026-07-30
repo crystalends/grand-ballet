@@ -11,8 +11,12 @@ const createMenuToggle = (blockName, nav) => {
   return toggle;
 };
 
-const setMenuState = ({ blockName, nav, toggle }, isOpen) => {
+const setMenuState = ({ blockName, mediaQuery, nav, toggle }, requestedState) => {
+  const isMobile = mediaQuery.matches;
+  const isOpen = isMobile && requestedState;
   nav.classList.toggle(`${blockName}__nav--open`, isOpen);
+  nav.inert = isMobile && !isOpen;
+  nav.toggleAttribute("aria-hidden", isMobile && !isOpen);
   toggle.setAttribute("aria-expanded", String(isOpen));
   toggle.setAttribute("aria-label", isOpen ? "Закрыть меню" : "Открыть меню");
 };
@@ -26,8 +30,10 @@ const initMenu = (header, index) => {
 
   nav.id ||= `${blockName}-navigation-${index + 1}`;
   const toggle = createMenuToggle(blockName, nav);
-  const menu = { blockName, nav, toggle };
+  const mediaQuery = window.matchMedia(MOBILE_BREAKPOINT);
+  const menu = { blockName, mediaQuery, nav, toggle };
   (actions || navRow).append(toggle);
+  setMenuState(menu, false);
 
   toggle.addEventListener("click", () => {
     setMenuState(menu, toggle.getAttribute("aria-expanded") !== "true");
@@ -50,7 +56,6 @@ const initMenu = (header, index) => {
     }
   });
 
-  const mediaQuery = window.matchMedia(MOBILE_BREAKPOINT);
   mediaQuery.addEventListener("change", () => setMenuState(menu, false));
   return menu;
 };
