@@ -4282,13 +4282,14 @@ html:has(.preparation-page) { overflow-x: hidden; }
     max-width: 100%;
   }
 
-  .home-hero__main,
-  .home-hero__pre-professional,
+  .home-hero__main { flex: 1 1 1020px; }
+  .home-hero__pre-professional { flex: 0 0 500px; }
   .promo-card { flex: 1 1 0; }
 
   .home-hero__heading,
   .home-hero__lead,
   .home-hero__pre-copy,
+  .home-hero__light-button,
   .home-about__intro,
   .home-about__mission,
   .trust-statement__content { width: 100%; }
