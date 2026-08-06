@@ -325,7 +325,8 @@ const stressContent = () => {
   const clippedText = targets
     .filter((element) => {
       const style = getComputedStyle(element);
-      return element.clientHeight > 0
+      return !element.matches("[data-content-preview]")
+        && element.clientHeight > 0
         && (style.overflowY === "hidden" || style.overflowY === "clip")
         && element.scrollHeight > element.clientHeight + 2;
     })

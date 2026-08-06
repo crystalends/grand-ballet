@@ -467,7 +467,18 @@ textarea:focus-visible,
 .trial-form__field--message { height: 94px; }
 .trial-form__input { width: 100%; height: 39px; padding: 10px 20px; border: 0; border-radius: var(--radius-card); color: var(--color-ink); background: var(--color-card); outline: none; }
 .trial-form__input::placeholder { color: var(--color-muted); opacity: 1; }
-.trial-form__textarea { height: 94px; resize: none; }
+.trial-form__textarea {
+  width: 100%;
+  max-width: 100%;
+  height: 94px;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  word-break: break-word;
+  resize: none;
+}
 .trial-form__consent { display: flex; align-items: center; gap: 5px; color: var(--color-muted); font-size: 12px; }
 .trial-form__consent-link { text-decoration: underline; }
 .trial-form__checkbox { width: 24px; height: 24px; margin: 0; flex: 0 0 24px; appearance: none; border: 1px solid var(--color-accent); border-radius: 50%; background: transparent; }
@@ -940,7 +951,18 @@ textarea:focus-visible,
   outline: none;
 }
 .application-modal__input::placeholder { color: var(--color-muted); opacity: 1; }
-.application-modal__textarea { height: 94px; resize: none; }
+.application-modal__textarea {
+  width: 100%;
+  max-width: 100%;
+  height: 94px;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  word-break: break-word;
+  resize: none;
+}
 .application-modal__select { appearance: none; color: var(--color-muted); font: inherit; cursor: pointer; }
 .application-modal__actions { position: relative; display: flex; flex-direction: column; gap: 10px; width: 725px; height: 81px; }
 .application-modal__consent { display: flex; align-items: center; gap: 5px; width: 725px; height: 24px; color: var(--color-muted); font-size: 12px; }
@@ -1140,7 +1162,6 @@ textarea:focus-visible,
   .teachers__all-link, .halls__all-link { display: none; }
   .teachers__viewport, .service-gallery__viewport { width: 100%; scrollbar-width: none; }
   .teachers__viewport { height: auto; min-height: 475px; margin-top: 28px; }
-  .carousel__button { display: none; }
   .halls__grid { height: auto; min-height: 0; margin-top: 28px; }
   .hall-card { height: auto; min-height: 0; }
   .hall-card__image { width: 100%; height: auto; }
@@ -1396,7 +1417,6 @@ textarea:focus-visible,
   .about-team__heading { height: auto; min-height: 0; }
   .about-team__heading .button { display: none; }
   .about-team__viewport { height: auto; min-height: 475px; margin-top: 28px; scrollbar-width: none; }
-  .about-team__arrow { display: none; }
   .school-equipment__text, .school-students__text { height: auto; min-height: 0; }
   .school-leaders { display: grid; }
   .leader-card__title { font-size: clamp(38px, 11vw, 48px); line-height: 1.08; }
@@ -1507,7 +1527,8 @@ textarea:focus-visible,
   .hall-gallery__row { margin-top: 28px; }
   .hall-gallery__row + .hall-gallery__row { margin-top: 40px; }
   .hall-gallery__viewport { width: 100%; height: auto; min-height: 384px; scrollbar-width: none; }
-  .hall-gallery__arrow { display: none; }
+  .hall-gallery__arrow--previous { left: max(-20px, calc((100% - 100vw) / 2)); }
+  .hall-gallery__arrow--next { right: max(-20px, calc((100% - 100vw) / 2)); }
   .halls-seo__copy { width: 100%; height: auto; min-height: 0; }
 }
 
@@ -2432,11 +2453,18 @@ textarea:focus-visible,
 
 .review-card__text {
   width: 100%;
-  height: auto;
-  min-height: 152px;
-  flex: 1 1 auto;
+  height: 152px;
+  flex: 0 0 152px;
+  overflow: hidden;
   font-size: 16px;
   line-height: 1.2;
+  text-overflow: ellipsis;
+}
+
+.review-card:not(.review-card--wide) .review-card__text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 8;
 }
 
 .review-card__footer {
@@ -2732,8 +2760,6 @@ textarea:focus-visible,
   .news-article__point { height: auto; min-height: 0; }
   .news-gallery,
   .news-related { height: auto; margin-top: 64px; }
-  .news-gallery__arrow,
-  .news-related__arrow { display: none; }
   .news-detail-page__trial { margin-top: 64px; }
 }
 
@@ -3628,7 +3654,6 @@ textarea:focus-visible,
 
   .director-gallery__viewport { margin-top: 28px; scrollbar-width: none; }
   .director-gallery__image { width: min(calc(100vw - 32px), 500px); height: auto; flex-basis: min(calc(100vw - 32px), 500px); aspect-ratio: 500 / 260; }
-  .director-gallery__arrow { display: none; }
   .news-gallery__intro,
   .news-gallery__viewport { width: 100%; height: auto; }
   .news-gallery__viewport { margin-top: 28px; scrollbar-width: none; }
@@ -3693,7 +3718,6 @@ textarea:focus-visible,
   .reviews__heading, .home-news__heading { height: auto; min-height: 0; align-items: flex-start; gap: 16px; }
   .reviews__heading .button, .home-news__heading .button { display: none; }
   .reviews__viewport { width: 100%; margin-top: 28px; }
-  .reviews .carousel__button { display: none; }
   .home-news__viewport { width: 100%; height: auto; min-height: 0; margin-top: 28px; }
   .news-card {
     width: min(calc(100vw - 32px), 620px);
@@ -6959,9 +6983,6 @@ textarea:focus-visible,
     width: calc((100% - 20px) / 3);
   }
 
-  .home-news--franchise .home-news__arrow {
-    display: none;
-  }
 }
 
 @media (max-width: 700px) {
@@ -7578,4 +7599,9 @@ textarea:focus-visible,
   .franchise-package__column:nth-child(4) {
     padding-bottom: 12.8125px;
   }
+}
+
+@media (max-width: 1280px) {
+  .carousel__button--previous { left: max(-20px, calc((100% - 100vw) / 2)); }
+  .carousel__button--next { right: max(-20px, calc((100% - 100vw) / 2)); }
 }

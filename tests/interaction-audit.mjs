@@ -85,11 +85,42 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload({ waitUntil: "networkidle" });
+  const mobileTextarea = page.locator(".trial-form__textarea").first();
+  await mobileTextarea.fill("А".repeat(500));
+  const mobileTextareaState = await mobileTextarea.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+    overflowX: getComputedStyle(element).overflowX,
+  }));
+  if (mobileTextareaState.overflowX !== "hidden"
+    || mobileTextareaState.scrollWidth > mobileTextareaState.clientWidth + 1) {
+    throw new Error(`Textarea допускает горизонтальный скролл: ${JSON.stringify(mobileTextareaState)}.`);
+  }
+  await mobileTextarea.fill("");
   await page.waitForFunction(() => [...document.querySelectorAll("[data-carousel-viewport]")]
     .every((viewport) => viewport.classList.contains("swiper-initialized")));
   const carouselViewports = page.locator("[data-carousel-viewport]");
   for (let index = 0; index < await carouselViewports.count(); index += 1) {
     const viewport = carouselViewports.nth(index);
+    const carousel = viewport.locator("xpath=ancestor::*[@data-carousel][1]");
+    const previousButton = carousel.locator("[data-carousel-previous]");
+    const nextButton = carousel.locator("[data-carousel-next]");
+    if (!await previousButton.isVisible() || !await nextButton.isVisible()) {
+      throw new Error(`Стрелки мобильной карусели скрыты: ${await carousel.getAttribute("data-carousel-label")}.`);
+    }
+    const arrowOverlapState = await viewport.evaluate((element) => {
+      const carousel = element.closest("[data-carousel]");
+      const previous = carousel.querySelector("[data-carousel-previous]").getBoundingClientRect();
+      const next = carousel.querySelector("[data-carousel-next]").getBoundingClientRect();
+      const viewportRect = element.getBoundingClientRect();
+      return {
+        previousOverlapsEdge: previous.left < viewportRect.left && previous.right > viewportRect.left,
+        nextOverlapsEdge: next.left < viewportRect.right && next.right > viewportRect.right,
+      };
+    });
+    if (!arrowOverlapState.previousOverlapsEdge || !arrowOverlapState.nextOverlapsEdge) {
+      throw new Error(`Мобильные стрелки должны частично выступать за края слайда: ${JSON.stringify(arrowOverlapState)}.`);
+    }
     await viewport.hover();
     await page.mouse.wheel(1200, 0);
     await page.waitForTimeout(50);
@@ -142,6 +173,14 @@ try {
         || slideSnapState.viewportHeight + 1 < slideSnapState.activeHeight)) {
       throw new Error(`Мобильные отзывы должны полностью помещаться по высоте: ${JSON.stringify(slideSnapState)}.`);
     }
+
+    const initialButtonIndex = await viewport.evaluate((element) => element.swiper.activeIndex);
+    await nextButton.click();
+    await page.waitForFunction(
+      ({ viewportIndex, initialIndex }) => document.querySelectorAll("[data-carousel-viewport]")[viewportIndex].swiper.activeIndex !== initialIndex,
+      { viewportIndex: index, initialIndex: initialButtonIndex },
+    );
+    await previousButton.click();
   }
   const mobileMenu = page.locator(".site-header__menu-toggle");
   await mobileMenu.click();
