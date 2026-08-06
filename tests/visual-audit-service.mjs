@@ -114,6 +114,70 @@ try {
     throw new Error("Карусель педагогов не переключает активный слайд.");
   }
 
+  for (const width of [1920, 1440, 1281]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const heroGrowth = await page.evaluate(() => {
+      const getHeight = (selector) => document.querySelector(selector).getBoundingClientRect().height;
+      const getDocumentTop = (selector) => {
+        const rect = document.querySelector(selector).getBoundingClientRect();
+        return rect.top + window.scrollY;
+      };
+      const panel = document.querySelector(".service-hero__panel");
+      const targets = [...panel.querySelectorAll("h1, p, dt, dd, li")];
+      const originals = targets.map((element) => element.textContent);
+      const getOverflowingChildren = () => {
+        const panelRect = panel.getBoundingClientRect();
+        return [
+          ".service-hero__breadcrumb",
+          ".service-hero__heading",
+          ".service-facts",
+          ".service-prices",
+          ".service-hero__actions",
+        ].filter((selector) => {
+          const rect = panel.querySelector(selector).getBoundingClientRect();
+          return rect.left < panelRect.left - 1 || rect.right > panelRect.right + 1;
+        });
+      };
+      const before = {
+        hero: getHeight(".service-hero"),
+        panel: getHeight(".service-hero__panel"),
+        media: getHeight(".service-hero__media"),
+        image: getHeight(".service-hero__image"),
+        nextTop: getDocumentTop(".audience"),
+        overflowingChildren: getOverflowingChildren(),
+      };
+
+      targets.forEach((element, index) => {
+        element.textContent = Array(4).fill(originals[index]).join(" ");
+      });
+      const after = {
+        hero: getHeight(".service-hero"),
+        panel: getHeight(".service-hero__panel"),
+        media: getHeight(".service-hero__media"),
+        image: getHeight(".service-hero__image"),
+        nextTop: getDocumentTop(".audience"),
+        clipped: panel.scrollHeight > panel.clientHeight + 1,
+        overflowingChildren: getOverflowingChildren(),
+      };
+
+      targets.forEach((element, index) => { element.textContent = originals[index]; });
+      return { before, after };
+    });
+    const growth = heroGrowth.after.hero - heroGrowth.before.hero;
+    const nextShift = heroGrowth.after.nextTop - heroGrowth.before.nextTop;
+    if (growth <= 2
+      || nextShift < growth - 2
+      || Math.abs(heroGrowth.before.panel - heroGrowth.before.media) > 1
+      || Math.abs(heroGrowth.before.media - heroGrowth.before.image) > 1
+      || Math.abs(heroGrowth.after.panel - heroGrowth.after.media) > 1
+      || Math.abs(heroGrowth.after.media - heroGrowth.after.image) > 1
+      || heroGrowth.before.overflowingChildren.length
+      || heroGrowth.after.overflowingChildren.length
+      || heroGrowth.after.clipped) {
+      throw new Error(`Service hero не растёт синхронно с контентом на ширине ${width}px: ${JSON.stringify(heroGrowth)}.`);
+    }
+  }
+
   for (const width of [1440, 1024]) {
     await page.setViewportSize({ width, height: 1000 });
     const footerLayout = await page.locator(".site-footer").evaluate((footer) => {

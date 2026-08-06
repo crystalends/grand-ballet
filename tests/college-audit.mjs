@@ -6,7 +6,8 @@ import { chromium } from "playwright-core";
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 
-const BASE_URL = "http://127.0.0.1:8080";
+const PORT = Number(process.env.COLLEGE_AUDIT_PORT || 8098);
+const BASE_URL = `http://127.0.0.1:${PORT}`;
 const VIEWPORT = { width: 1920, height: 1080 };
 const EXPECTED_PAGE_HEIGHT = 8400;
 const MAX_DIFF_RATIO = 0.04;
@@ -40,7 +41,7 @@ const waitForServer = async () => {
     if (await isServerReady()) return;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error("Локальный сервер не запустился на порту 8080.");
+  throw new Error(`Локальный сервер не запустился на порту ${PORT}.`);
 };
 
 const differs = (actual, expected) => Object.entries(expected)
@@ -69,7 +70,7 @@ let browser;
 
 try {
   if (!await isServerReady()) {
-    server = spawn("python3", ["-m", "http.server", "8080"], { stdio: "ignore" });
+    server = spawn("python3", ["-m", "http.server", String(PORT)], { stdio: "ignore" });
     await waitForServer();
   }
 
@@ -325,16 +326,132 @@ try {
   await form.locator("button").click();
   if (!await form.locator(".trial-form__status").textContent()) throw new Error("Форма не сообщает результат отправки.");
 
+  const campaignGrowth = await page.evaluate(() => {
+    const campaign = document.querySelector(".college-campaign");
+    const hero = document.querySelector(".college-hero");
+    const heroMain = document.querySelector(".college-hero__main");
+    const copy = document.querySelector(".college-campaign__copy");
+    const button = document.querySelector(".college-campaign__button");
+    const nextSection = document.querySelector(".college-path");
+    const textNodes = [...copy.querySelectorAll("h2, p")];
+    const originalTexts = textNodes.map((node) => node.textContent);
+    const getDocumentTop = (element) => element.getBoundingClientRect().top + window.scrollY;
+    const before = {
+      campaign: campaign.getBoundingClientRect().height,
+      hero: hero.getBoundingClientRect().height,
+      nextTop: getDocumentTop(nextSection),
+    };
+
+    textNodes.forEach((node, index) => {
+      node.textContent = Array(3).fill(originalTexts[index]).join(" ");
+    });
+    const campaignRect = campaign.getBoundingClientRect();
+    const copyRect = copy.getBoundingClientRect();
+    const buttonRect = button.getBoundingClientRect();
+    const after = {
+      campaign: campaignRect.height,
+      hero: hero.getBoundingClientRect().height,
+      heroMain: heroMain.getBoundingClientRect().height,
+      nextTop: getDocumentTop(nextSection),
+      copyButtonGap: buttonRect.top - copyRect.bottom,
+      buttonBottomInset: campaignRect.bottom - buttonRect.bottom,
+      copyClipped: copy.scrollHeight > copy.clientHeight + 1,
+    };
+
+    textNodes.forEach((node, index) => { node.textContent = originalTexts[index]; });
+    return { before, after };
+  });
+  const campaignHeightGrowth = campaignGrowth.after.campaign - campaignGrowth.before.campaign;
+  if (campaignHeightGrowth <= 2
+    || Math.abs(campaignGrowth.after.hero - campaignGrowth.after.campaign) > 1
+    || Math.abs(campaignGrowth.after.heroMain - campaignGrowth.after.campaign) > 1
+    || campaignGrowth.after.nextTop - campaignGrowth.before.nextTop < campaignHeightGrowth - 1
+    || campaignGrowth.after.copyButtonGap < 39
+    || campaignGrowth.after.buttonBottomInset < 39
+    || campaignGrowth.after.copyClipped) {
+    throw new Error(`Карточка приёмной кампании не растёт за текстом: ${JSON.stringify(campaignGrowth)}.`);
+  }
+
+  const contentGrowth = await page.evaluate(() => {
+    const getHeight = (selector) => document.querySelector(selector).getBoundingClientRect().height;
+    const getDocumentTop = (element) => element.getBoundingClientRect().top + window.scrollY;
+    const directorText = document.querySelector(".college-director__copy p:last-child");
+    const trustText = document.querySelector(".audience-statement__copy--college p:last-child");
+    const directorOriginal = directorText.textContent;
+    const trustOriginal = trustText.textContent;
+    const nextSection = document.querySelector("#college-teachers");
+    const before = {
+      director: getHeight(".college-director"),
+      statement: getHeight(".audience-statement--college"),
+      nextTop: getDocumentTop(nextSection),
+    };
+
+    directorText.textContent = Array(7).fill(directorOriginal).join(" ");
+    trustText.textContent = Array(12).fill(trustOriginal).join(" ");
+    const directorPanel = document.querySelector(".college-director__panel");
+    const statement = document.querySelector(".audience-statement--college");
+    const after = {
+      director: getHeight(".college-director"),
+      directorMedia: getHeight(".college-director__media"),
+      directorPanel: getHeight(".college-director__panel"),
+      statement: getHeight(".audience-statement--college"),
+      trustBody: getHeight(".college-trust__body"),
+      nextTop: getDocumentTop(nextSection),
+      directorClipped: directorPanel.scrollHeight > directorPanel.clientHeight + 1,
+      statementClipped: statement.scrollHeight > statement.clientHeight + 1,
+    };
+
+    directorText.textContent = directorOriginal;
+    trustText.textContent = trustOriginal;
+    return { before, after };
+  });
+  const directorGrowth = contentGrowth.after.director - contentGrowth.before.director;
+  const statementGrowth = contentGrowth.after.statement - contentGrowth.before.statement;
+  const nextSectionShift = contentGrowth.after.nextTop - contentGrowth.before.nextTop;
+  if (directorGrowth <= 2
+    || statementGrowth <= 2
+    || nextSectionShift < directorGrowth + statementGrowth - 2
+    || Math.abs(contentGrowth.after.directorMedia - contentGrowth.after.directorPanel) > 1
+    || Math.abs(contentGrowth.after.statement - contentGrowth.after.trustBody) > 1
+    || contentGrowth.after.directorClipped
+    || contentGrowth.after.statementClipped) {
+    throw new Error(`Контентные блоки колледжа не растут по тексту: ${JSON.stringify(contentGrowth)}.`);
+  }
+
+  for (const width of [1281, 1366, 1440, 1600]) {
+    await page.setViewportSize({ width, height: 900 });
+    const trustLayout = await page.evaluate(() => {
+      const statement = document.querySelector(".audience-statement--college").getBoundingClientRect();
+      const grid = document.querySelector(".college-trust__grid").getBoundingClientRect();
+      const intersectionWidth = Math.max(0, Math.min(statement.right, grid.right) - Math.max(statement.left, grid.left));
+      const intersectionHeight = Math.max(0, Math.min(statement.bottom, grid.bottom) - Math.max(statement.top, grid.top));
+      const copy = document.querySelector(".audience-statement__copy--college");
+      return {
+        intersectionArea: intersectionWidth * intersectionHeight,
+        copyClipped: copy.scrollHeight > copy.clientHeight + 1,
+      };
+    });
+    if (trustLayout.intersectionArea > .5 || trustLayout.copyClipped) {
+      throw new Error(`Блоки college-trust пересекаются или обрезают текст на ширине ${width}px: ${JSON.stringify(trustLayout)}.`);
+    }
+  }
+
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileGeometry = await page.evaluate(() => ({
     width: document.documentElement.scrollWidth,
     viewport: window.innerWidth,
+    headerHeroGap: document.querySelector(".college-hero").getBoundingClientRect().top
+      - document.querySelector(".college-header").getBoundingClientRect().bottom,
+    campaignGap: document.querySelector(".college-campaign__button").getBoundingClientRect().top
+      - document.querySelector(".college-campaign__copy").getBoundingClientRect().bottom,
     overflow: Array.from(document.querySelectorAll("body *"))
       .map((element) => ({ selector: element.className || element.tagName, right: element.getBoundingClientRect().right }))
       .filter((item) => item.right > window.innerWidth + .5)
       .slice(0, 8),
   }));
   if (mobileGeometry.width !== mobileGeometry.viewport) throw new Error(`На мобильной ширине появился горизонтальный скролл: ${JSON.stringify(mobileGeometry)}.`);
+  if (Math.abs(mobileGeometry.headerHeroGap - 20) > 1) throw new Error(`Неверный отступ между header и hero: ${JSON.stringify(mobileGeometry)}.`);
+  if (mobileGeometry.campaignGap < 39) throw new Error(`Текст приёмной кампании налезает на кнопку: ${JSON.stringify(mobileGeometry)}.`);
   if (!await page.locator(".college-hero__image").evaluate((image) => image.complete && image.naturalWidth > 0)) throw new Error("Изображения страницы не загрузились.");
   if (consoleErrors.length) throw new Error(`Ошибки консоли: ${consoleErrors.join(" | ")}`);
 } finally {

@@ -110,30 +110,32 @@ const verifyFlowDisplacement = (cases) => cases.flatMap(([containerSelector, tex
   const originalText = text.textContent;
   const before = {
     textHeight: text.getBoundingClientRect().height,
-    followerTop: follower.getBoundingClientRect().top,
-    containerHeight: container.getBoundingClientRect().height,
   };
   text.append(document.createTextNode(` ${originalText.trim()}`));
+  const textRect = text.getBoundingClientRect();
+  const followerRect = follower.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
   const after = {
-    textHeight: text.getBoundingClientRect().height,
-    followerTop: follower.getBoundingClientRect().top,
-    containerHeight: container.getBoundingClientRect().height,
+    textHeight: textRect.height,
+    textBottom: textRect.bottom,
+    followerTop: followerRect.top,
+    followerBottom: followerRect.bottom,
+    containerBottom: containerRect.bottom,
   };
   text.textContent = originalText;
 
   const textGrowth = after.textHeight - before.textHeight;
-  const followerShift = after.followerTop - before.followerTop;
-  const containerGrowth = after.containerHeight - before.containerHeight;
-  if (textGrowth <= 2
-    || (followerShift >= textGrowth - 2 && containerGrowth >= textGrowth - 2)) {
+  const textOverlap = after.textBottom - after.followerTop;
+  const followerEscape = after.followerBottom - after.containerBottom;
+  if (textGrowth <= 2 || (textOverlap <= 2 && followerEscape <= 2)) {
     return [];
   }
 
   return [{
     containerSelector,
     textGrowth: Math.round(textGrowth),
-    followerShift: Math.round(followerShift),
-    containerGrowth: Math.round(containerGrowth),
+    textOverlap: Math.round(textOverlap),
+    followerEscape: Math.round(followerEscape),
   }];
 });
 
@@ -169,6 +171,62 @@ const stressContent = () => {
         && !element.closest("dialog, [role='dialog']");
     });
 
+  const getClassName = (element) => typeof element.className === "string"
+    ? element.className.trim()
+    : "";
+  const elementIds = new WeakMap();
+  let nextElementId = 1;
+  const getElementId = (element) => {
+    if (!elementIds.has(element)) elementIds.set(element, nextElementId++);
+    return elementIds.get(element);
+  };
+  const collectSiblingOverlaps = () => {
+    const overlaps = new Map();
+    const containers = [document.querySelector("main"), ...document.querySelectorAll("main *")]
+      .filter((container) => container
+        && !container.closest("[data-carousel], dialog, [role='dialog']")
+        && container.children.length > 1
+        && container.children.length <= 30);
+
+    for (const container of containers) {
+      const children = [...container.children]
+        .filter((child) => {
+          const style = getComputedStyle(child);
+          const rect = child.getBoundingClientRect();
+          return style.display !== "none"
+            && style.visibility !== "hidden"
+            && style.position !== "absolute"
+            && style.position !== "fixed"
+            && !style.display.startsWith("inline")
+            && rect.width > 2
+            && rect.height > 2;
+        });
+
+      for (let firstIndex = 0; firstIndex < children.length; firstIndex += 1) {
+        const first = children[firstIndex];
+        const firstRect = first.getBoundingClientRect();
+        for (let secondIndex = firstIndex + 1; secondIndex < children.length; secondIndex += 1) {
+          const second = children[secondIndex];
+          const secondRect = second.getBoundingClientRect();
+          const intersectionWidth = Math.min(firstRect.right, secondRect.right) - Math.max(firstRect.left, secondRect.left);
+          const intersectionHeight = Math.min(firstRect.bottom, secondRect.bottom) - Math.max(firstRect.top, secondRect.top);
+          if (intersectionWidth <= 2 || intersectionHeight <= 2) continue;
+
+          const key = `${getElementId(container)}:${getElementId(first)}:${getElementId(second)}`;
+          overlaps.set(key, {
+            container: getClassName(container) || container.tagName.toLowerCase(),
+            first: getClassName(first) || first.tagName.toLowerCase(),
+            second: getClassName(second) || second.tagName.toLowerCase(),
+            intersectionWidth: Math.round(intersectionWidth),
+            intersectionHeight: Math.round(intersectionHeight),
+          });
+        }
+      }
+    }
+    return overlaps;
+  };
+  const baselineSiblingOverlaps = collectSiblingOverlaps();
+
   for (const element of targets) {
     const text = element.textContent.trim().replace(/\s+/g, " ");
     element.append(document.createTextNode(` ${text} ${text} ${text}`));
@@ -179,9 +237,10 @@ const stressContent = () => {
     viewport.swiper?.updateAutoHeight(0);
   }
 
-  const getClassName = (element) => typeof element.className === "string"
-    ? element.className.trim()
-    : "";
+  const siblingOverlaps = [...collectSiblingOverlaps()]
+    .filter(([key]) => !baselineSiblingOverlaps.has(key))
+    .map(([, overlap]) => overlap)
+    .slice(0, 20);
   const escapedText = [];
 
   for (const target of targets) {
@@ -233,13 +292,44 @@ const stressContent = () => {
 
   const root = document.documentElement;
   const horizontalOverflow = root.scrollWidth > root.clientWidth + 2
-    ? { clientWidth: root.clientWidth, scrollWidth: root.scrollWidth }
+    ? {
+      clientWidth: root.clientWidth,
+      scrollWidth: root.scrollWidth,
+      elements: [...document.querySelectorAll("body *")]
+        .filter((element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return style.display !== "none"
+            && style.visibility !== "hidden"
+            && (rect.left < -2 || rect.right > root.clientWidth + 2);
+        })
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            element: getClassName(element) || element.tagName.toLowerCase(),
+            left: Math.round(rect.left),
+            right: Math.round(rect.right),
+            width: Math.round(rect.width),
+          };
+        })
+        .slice(0, 20),
+      internalElements: [...document.querySelectorAll("body *")]
+        .filter((element) => element.scrollWidth > element.clientWidth + 2)
+        .map((element) => ({
+          element: getClassName(element) || element.tagName.toLowerCase(),
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          overflowX: getComputedStyle(element).overflowX,
+        }))
+        .slice(0, 20),
+    }
     : null;
 
   return {
     targetCount: targets.length,
     escapedText: escapedText.slice(0, 20),
     clippedContainers: clippedContainers.slice(0, 20),
+    siblingOverlaps,
     horizontalOverflow,
   };
 };
@@ -269,6 +359,7 @@ try {
       if (flowFailures.length
         || result.escapedText.length
         || result.clippedContainers.length
+        || result.siblingOverlaps.length
         || result.horizontalOverflow) {
         failures.push({ pageName, width, flowFailures, ...result });
       }

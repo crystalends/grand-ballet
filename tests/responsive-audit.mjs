@@ -198,6 +198,83 @@ const getLayoutState = () => {
       }))
     : [];
 
+  const tabletNewsCarouselSizingIssues = root.clientWidth > 480 && root.clientWidth <= 1280
+    ? [...document.querySelectorAll(".home-news .news-card")]
+      .map((slide, index) => {
+        const viewport = slide.closest(".home-news__viewport");
+        const slideRect = slide.getBoundingClientRect();
+        const viewportRect = viewport?.getBoundingClientRect();
+        return {
+          index,
+          width: Math.round(slideRect.width),
+          height: Math.round(slideRect.height),
+          viewportWidth: Math.round(viewportRect?.width || 0),
+        };
+      })
+      .filter((slide) => slide.width > Math.min(620, slide.viewportWidth) + 1
+        || slide.height > window.innerHeight + 1)
+    : [];
+
+  const tabletTeacherDirectoryIssues = root.clientWidth >= 701 && root.clientWidth <= 1280
+    ? [...document.querySelectorAll(".teacher-directory")].flatMap((directory) => {
+      const grid = directory.querySelector(".teacher-directory__grid");
+      const heading = directory.querySelector(":scope > .section-title");
+      const previousSection = directory.previousElementSibling;
+      if (!grid || !heading || !previousSection) return [{ error: "incomplete teacher directory" }];
+
+      const gridRect = grid.getBoundingClientRect();
+      const headingRect = heading.getBoundingClientRect();
+      const directoryRect = directory.getBoundingClientRect();
+      const previousRect = previousSection.getBoundingClientRect();
+      const cards = [...grid.querySelectorAll(".teacher-card--directory")];
+      const mismatchedCards = cards.flatMap((card, index) => {
+        const cardRect = card.getBoundingClientRect();
+        const imageRect = card.querySelector(".teacher-card__image")?.getBoundingClientRect();
+        const copyRect = card.querySelector(".teacher-card__copy")?.getBoundingClientRect();
+        if (!imageRect || !copyRect) return [{ index, error: "incomplete teacher card" }];
+        const imageRatio = imageRect.width / imageRect.height;
+        return Math.abs(cardRect.width - imageRect.width) > 1
+          || Math.abs(copyRect.width - imageRect.width) > 1
+          || Math.abs(imageRatio - 37 / 40) > .01
+          ? [{
+            index,
+            cardWidth: Math.round(cardRect.width),
+            imageWidth: Math.round(imageRect.width),
+            copyWidth: Math.round(copyRect.width),
+            imageRatio,
+          }]
+          : [];
+      });
+      const sectionGap = directoryRect.top - previousRect.bottom;
+      const headingGap = gridRect.top - headingRect.bottom;
+      return sectionGap > 65 || headingGap > 29 || mismatchedCards.length
+        ? [{ sectionGap, headingGap, mismatchedCards }]
+        : [];
+    })
+    : [];
+
+  const adaptiveCollegeFooterBrandIssues = root.clientWidth <= 1280
+    ? [...document.querySelectorAll(".college-footer__brand")].flatMap((brand) => {
+      const logo = brand.querySelector("img");
+      const description = brand.querySelector("p");
+      if (!logo || !description) return [{ error: "incomplete college footer brand" }];
+
+      const brandRect = brand.getBoundingClientRect();
+      const logoRect = logo.getBoundingClientRect();
+      const descriptionRect = description.getBoundingClientRect();
+      const contentGap = descriptionRect.top - logoRect.bottom;
+      const unusedHeight = brandRect.bottom - descriptionRect.bottom;
+      return logoRect.width > 371 || contentGap > 17 || unusedHeight > 1
+        ? [{
+          brandHeight: Math.round(brandRect.height),
+          logoWidth: Math.round(logoRect.width),
+          contentGap: Math.round(contentGap),
+          unusedHeight: Math.round(unusedHeight),
+        }]
+        : [];
+    })
+    : [];
+
   return {
     clientWidth: root.clientWidth,
     scrollWidth: root.scrollWidth,
@@ -211,6 +288,9 @@ const getLayoutState = () => {
     nativeScrollingCarousels,
     mobileCarouselSizingIssues,
     nonMobileCarouselConfigIssues,
+    tabletNewsCarouselSizingIssues,
+    tabletTeacherDirectoryIssues,
+    adaptiveCollegeFooterBrandIssues,
   };
 };
 
@@ -273,6 +353,15 @@ try {
       }
       if (state.nonMobileCarouselConfigIssues.length) {
         failures.push(`${pageName} @ ${width}px: tablet/desktop Swiper configuration changed ${JSON.stringify(state.nonMobileCarouselConfigIssues)}`);
+      }
+      if (state.tabletNewsCarouselSizingIssues.length) {
+        failures.push(`${pageName} @ ${width}px: news slides exceed the tablet viewport ${JSON.stringify(state.tabletNewsCarouselSizingIssues)}`);
+      }
+      if (state.tabletTeacherDirectoryIssues.length) {
+        failures.push(`${pageName} @ ${width}px: teacher directory uses mismatched tablet cards or desktop spacing ${JSON.stringify(state.tabletTeacherDirectoryIssues)}`);
+      }
+      if (state.adaptiveCollegeFooterBrandIssues.length) {
+        failures.push(`${pageName} @ ${width}px: college footer brand has an oversized logo or excessive spacing ${JSON.stringify(state.adaptiveCollegeFooterBrandIssues)}`);
       }
       if (consoleErrors.length) {
         failures.push(`${pageName} @ ${width}px: console errors ${consoleErrors.join(" | ")}`);

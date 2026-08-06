@@ -4,7 +4,8 @@ import { request } from "node:http";
 import process from "node:process";
 import { chromium } from "playwright-core";
 
-const BASE_URL = "http://127.0.0.1:8080";
+const PORT = Number(process.env.PRIVACY_AUDIT_PORT || 8095);
+const BASE_URL = `http://127.0.0.1:${PORT}`;
 const PAGE_URL = `${BASE_URL}/privacy.html`;
 
 const isServerReady = () => new Promise((resolve) => {
@@ -18,23 +19,17 @@ const waitForServer = async () => {
     if (await isServerReady()) return;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error("Локальный сервер не запустился на порту 8080.");
+  throw new Error(`Локальный сервер не запустился на порту ${PORT}.`);
 };
 
-const expectedSections = [
-  [".site-header", 0, 190, 1540],
-  [".privacy-heading", 141, 190, 1540],
-  [".privacy-article", 310, 190, 1540],
-  [".privacy-article__content", 310, 190, 1150],
-  [".site-footer", 2436, 190, 1540],
-];
+const VIEWPORTS = [1920, 1281, 900, 390];
 
 let server;
 let browser;
 
 try {
   if (!await isServerReady()) {
-    server = spawn("python3", ["-m", "http.server", "8080"], { stdio: "ignore" });
+    server = spawn("python3", ["-m", "http.server", String(PORT)], { stdio: "ignore" });
     await waitForServer();
   }
 
@@ -42,47 +37,105 @@ try {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   const consoleErrors = [];
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
-  await page.goto(PAGE_URL, { waitUntil: "networkidle" });
-  await page.evaluate(() => document.fonts.ready);
+  for (const viewportWidth of VIEWPORTS) {
+    await page.setViewportSize({ width: viewportWidth, height: 1080 });
+    await page.goto(PAGE_URL, { waitUntil: "networkidle" });
+    await page.evaluate(() => document.fonts.ready);
 
-  const pageSize = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }));
-  if (pageSize.width !== 1920 || pageSize.height !== 2805) throw new Error(`Неверная геометрия страницы: ${pageSize.width}×${pageSize.height}.`);
+    const audit = await page.evaluate(() => {
+      const main = document.querySelector("main");
+      const section = document.querySelector(".privacy-section");
+      const footer = document.querySelector(".site-footer");
+      const sectionRect = section?.getBoundingClientRect();
+      const footerRect = footer?.getBoundingClientRect();
+      const style = section ? getComputedStyle(section) : null;
+      const firstHeadingStyle = section ? getComputedStyle(section.querySelector("h1")) : null;
+      const secondHeadingStyle = section ? getComputedStyle(section.querySelector("h2")) : null;
+      const paragraphStyle = section ? getComputedStyle(section.querySelectorAll("p")[1]) : null;
+      const thirdHeadingStyle = section ? getComputedStyle(section.querySelector("h3")) : null;
 
-  for (const [selector, top, left, width] of expectedSections) {
-    const box = await page.locator(selector).boundingBox();
-    if (!box || Math.abs(box.y - top) > 1 || Math.abs(box.x - left) > 1 || Math.abs(box.width - width) > 1) {
-      throw new Error(`${selector}: ожидалось x=${left}, y=${top}, w=${width}; получено ${JSON.stringify(box)}.`);
+      return {
+        mainChildCount: main?.children.length,
+        mainChildClass: main?.firstElementChild?.className,
+        sectionCount: document.querySelectorAll(".privacy-section").length,
+        legacyCount: document.querySelectorAll(".privacy-heading, .privacy-article, .privacy-section__copy, .privacy-point").length,
+        nestedClassCount: section?.querySelectorAll("[class]").length,
+        invalidTags: section ? [...section.children]
+          .map((node) => node.tagName)
+          .filter((tagName) => !["P", "BR", "H1", "H2", "H3", "UL"].includes(tagName)) : [],
+        breakCount: section?.querySelectorAll("br").length,
+        display: style?.display,
+        minHeight: style?.minHeight,
+        overflowY: style?.overflowY,
+        headingMargin: firstHeadingStyle?.marginBottom,
+        subheadingMargin: secondHeadingStyle?.marginBottom,
+        paragraphMargin: paragraphStyle?.marginBottom,
+        pointMargin: thirdHeadingStyle?.marginBottom,
+        sectionLeft: sectionRect?.left,
+        sectionRight: sectionRect?.right,
+        sectionBottom: sectionRect?.bottom,
+        footerTop: footerRect?.top,
+        viewport: document.documentElement.clientWidth,
+        scroll: document.documentElement.scrollWidth,
+        broken: [...document.images].filter((image) => !image.complete || image.naturalWidth === 0).length,
+      };
+    });
+
+    if (audit.mainChildCount !== 1 || audit.mainChildClass !== "privacy-section" || audit.sectionCount !== 1) {
+      throw new Error(`${viewportWidth}px: в main должна остаться одна .privacy-section. ${JSON.stringify(audit)}`);
+    }
+    if (audit.legacyCount || audit.nestedClassCount || audit.invalidTags.length) {
+      throw new Error(`${viewportWidth}px: внутри текстовой секции осталась лишняя структура. ${JSON.stringify(audit)}`);
+    }
+    if (audit.breakCount !== 14 || audit.display !== "block" || audit.minHeight !== "0px" || audit.overflowY !== "visible") {
+      throw new Error(`${viewportWidth}px: секция не соответствует обычному потоковому блоку. ${JSON.stringify(audit)}`);
+    }
+    if (audit.headingMargin !== "40px" || audit.subheadingMargin !== "20px" || audit.paragraphMargin !== "10px" || audit.pointMargin !== "5px") {
+      throw new Error(`${viewportWidth}px: неверные обычные отступы текста. ${JSON.stringify(audit)}`);
+    }
+    if (audit.sectionLeft < -1 || audit.sectionRight > audit.viewport + 1 || audit.scroll > audit.viewport) {
+      throw new Error(`${viewportWidth}px: появился горизонтальный скролл. ${JSON.stringify(audit)}`);
+    }
+    if (audit.footerTop < audit.sectionBottom - 1) {
+      throw new Error(`${viewportWidth}px: footer накладывается на текст. ${JSON.stringify(audit)}`);
+    }
+    if (audit.broken) throw new Error(`${viewportWidth}px: не загрузились изображения: ${audit.broken}.`);
+
+    if (viewportWidth === 1920) {
+      await mkdir("artifacts", { recursive: true });
+      await page.screenshot({ path: "artifacts/privacy-actual.png", fullPage: true });
     }
   }
-
-  const overflow = await page.locator(".privacy-article").evaluate((node) => node.scrollHeight > node.clientHeight);
-  if (overflow) throw new Error("Текст выходит за границы контейнера статьи.");
-
-  const desktopBroken = await page.evaluate(() => [...document.images].filter((image) => !image.complete || image.naturalWidth === 0).length);
-  if (desktopBroken) throw new Error(`Не загрузились изображения: ${desktopBroken}.`);
-
-  await mkdir("artifacts", { recursive: true });
-  await page.screenshot({ path: "artifacts/privacy-actual.png", fullPage: true });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(PAGE_URL, { waitUntil: "networkidle" });
   await page.evaluate(() => document.fonts.ready);
-  const mobile = await page.evaluate(() => ({
-    viewport: document.documentElement.clientWidth,
-    scroll: document.documentElement.scrollWidth,
-    broken: [...document.images].filter((image) => !image.complete || image.naturalWidth === 0).length,
-  }));
-  if (mobile.scroll > mobile.viewport) {
-    const offenders = await page.evaluate(() => [...document.querySelectorAll("body, body *")]
-      .map((node) => ({ selector: `${node.tagName.toLowerCase()}.${node.className}`, left: node.getBoundingClientRect().left, right: node.getBoundingClientRect().right, width: node.getBoundingClientRect().width, scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }))
-      .filter(({ left, right, scrollWidth, clientWidth }) => left < -1 || right > document.documentElement.clientWidth + 1 || scrollWidth > clientWidth + 1)
-      .slice(0, 8));
-    throw new Error(`Горизонтальный скролл на мобильном: ${mobile.scroll}px. Элементы: ${JSON.stringify(offenders)}`);
+  const growth = await page.evaluate(() => {
+    const section = document.querySelector(".privacy-section");
+    const footer = document.querySelector(".site-footer");
+    const before = {
+      sectionHeight: section.getBoundingClientRect().height,
+      footerTop: footer.getBoundingClientRect().top,
+    };
+    section.querySelectorAll("p").forEach((paragraph) => {
+      paragraph.textContent += ` ${paragraph.textContent} ${paragraph.textContent}`;
+    });
+    const sectionRect = section.getBoundingClientRect();
+    const footerRect = footer.getBoundingClientRect();
+    return {
+      sectionGrowth: sectionRect.height - before.sectionHeight,
+      footerShift: footerRect.top - before.footerTop,
+      overlap: sectionRect.bottom - footerRect.top,
+      scroll: document.documentElement.scrollWidth,
+      viewport: document.documentElement.clientWidth,
+    };
+  });
+  if (growth.sectionGrowth <= 0 || growth.footerShift < growth.sectionGrowth - 1 || growth.overlap > 1 || growth.scroll > growth.viewport) {
+    throw new Error(`Секция не растягивается за увеличенным текстом: ${JSON.stringify(growth)}`);
   }
-  if (mobile.broken) throw new Error(`Не загрузились изображения на мобильном: ${mobile.broken}.`);
   if (consoleErrors.length) throw new Error(`Ошибки консоли: ${consoleErrors.join(" | ")}`);
 
-  console.log("Privacy page geometry, independent containers and mobile audit: OK");
+  console.log("Privacy page single-section flow and responsive growth audit: OK");
   console.log("Actual: artifacts/privacy-actual.png");
 } finally {
   await browser?.close();

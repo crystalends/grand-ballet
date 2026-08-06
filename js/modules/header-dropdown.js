@@ -34,6 +34,7 @@ const createMenu = ({ items, key }, id) => {
 
   items.forEach(([label, href]) => {
     const item = document.createElement("li");
+    item.className = "college-header__dropdown-item";
     const link = document.createElement("a");
     link.className = "college-header__dropdown-link";
     link.href = href;

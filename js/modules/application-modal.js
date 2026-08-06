@@ -124,7 +124,7 @@ const createModal = () => {
         <div class="application-modal__actions">
           <label class="application-modal__consent">
             <input class="application-modal__checkbox" type="checkbox" name="consent" required>
-            <span>Я согласен с <a href="privacy.html">политикой конфиденциальности</a> и даю согласие на обработку персональных данных</span>
+            <span>Я согласен с <a class="application-modal__consent-link" href="privacy.html">политикой конфиденциальности</a> и даю согласие на обработку персональных данных</span>
           </label>
           <button class="application-modal__submit" type="submit">Отправить</button>
           <p class="application-modal__status" data-form-status role="status" aria-live="polite"></p>
