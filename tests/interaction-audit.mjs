@@ -228,6 +228,8 @@ try {
       toggleParent: toggle.parentElement === actions,
       iconOffsetX: Math.abs((toggleRect.left + toggleRect.width / 2) - (iconRect.left + iconRect.width / 2)),
       iconOffsetY: Math.abs((toggleRect.top + toggleRect.height / 2) - (iconRect.top + iconRect.height / 2)),
+      iconWidth: iconRect.width,
+      iconHeight: iconRect.height,
       navRightOffset: Math.abs(headerRect.right - navRect.right),
       navTransitionProperties: getComputedStyle(nav).transitionProperty,
       items: [...nav.children].map((item) => ({
@@ -239,6 +241,7 @@ try {
   });
   if (!siteHeaderLayout.toggleParent) throw new Error("Бургер и CTA должны находиться в одной action-группе.");
   if (siteHeaderLayout.iconOffsetX > .5 || siteHeaderLayout.iconOffsetY > .5) throw new Error(`Иконка бургера не отцентрирована: ${JSON.stringify(siteHeaderLayout)}.`);
+  if (siteHeaderLayout.iconWidth !== 20 || siteHeaderLayout.iconHeight !== 20) throw new Error(`Мобильная иконка бургера должна иметь размер 20×20px: ${JSON.stringify(siteHeaderLayout)}.`);
   if (siteHeaderLayout.navRightOffset > .5) throw new Error(`Меню не выровнено по правому краю header: ${JSON.stringify(siteHeaderLayout)}.`);
   if (!siteHeaderLayout.navTransitionProperties.includes("opacity")) throw new Error(`У мобильного меню отсутствует fade-переход: ${JSON.stringify(siteHeaderLayout)}.`);
   if (siteHeaderLayout.items.some((item) => item.height < 44 || item.textAlign !== "left")) {
@@ -260,14 +263,26 @@ try {
     const actions = header.querySelector(".college-header__actions");
     const toggle = header.querySelector(".college-header__menu-toggle");
     const icon = toggle.querySelector(".college-header__menu-icon");
+    const referenceButton = actions.querySelector(".college-header__icon-button");
+    const phoneIcon = actions.querySelector('.college-header__icon-button[href^="tel:"] .college-header__icon');
     const nav = header.querySelector(".college-header__nav");
     const rect = (element) => element.getBoundingClientRect();
     const toggleRect = rect(toggle);
     const iconRect = rect(icon);
+    const referenceButtonRect = rect(referenceButton);
+    const phoneIconRect = rect(phoneIcon);
     return {
       toggleParent: toggle.parentElement === actions,
       iconOffsetX: Math.abs((toggleRect.left + toggleRect.width / 2) - (iconRect.left + iconRect.width / 2)),
       iconOffsetY: Math.abs((toggleRect.top + toggleRect.height / 2) - (iconRect.top + iconRect.height / 2)),
+      toggleWidth: toggleRect.width,
+      toggleHeight: toggleRect.height,
+      referenceButtonWidth: referenceButtonRect.width,
+      referenceButtonHeight: referenceButtonRect.height,
+      menuIconWidth: iconRect.width,
+      menuIconHeight: iconRect.height,
+      phoneIconWidth: phoneIconRect.width,
+      phoneIconHeight: phoneIconRect.height,
       items: [...nav.children].map((item) => ({
         height: rect(item).height,
         textAlign: getComputedStyle(item).textAlign,
@@ -276,6 +291,14 @@ try {
   });
   if (!collegeHeaderLayout.toggleParent) throw new Error("Бургер колледжа должен находиться в action-группе.");
   if (collegeHeaderLayout.iconOffsetX > .5 || collegeHeaderLayout.iconOffsetY > .5) throw new Error(`Иконка бургера колледжа не отцентрирована: ${JSON.stringify(collegeHeaderLayout)}.`);
+  if (collegeHeaderLayout.toggleWidth !== collegeHeaderLayout.referenceButtonWidth
+    || collegeHeaderLayout.toggleHeight !== collegeHeaderLayout.referenceButtonHeight
+    || collegeHeaderLayout.menuIconWidth !== collegeHeaderLayout.phoneIconWidth
+    || collegeHeaderLayout.menuIconHeight !== collegeHeaderLayout.phoneIconHeight
+    || collegeHeaderLayout.menuIconWidth !== 20
+    || collegeHeaderLayout.menuIconHeight !== 20) {
+    throw new Error(`Бургер и телефон колледжа должны иметь одинаковые размеры кнопок и иконок: ${JSON.stringify(collegeHeaderLayout)}.`);
+  }
   if (collegeHeaderLayout.items.some((item) => item.height < 44 || item.textAlign !== "left")) throw new Error(`Пункты меню колледжа не имеют единой левой оси или touch-зоны 44px: ${JSON.stringify(collegeHeaderLayout.items)}.`);
 
   if (consoleErrors.length) throw new Error(`Ошибки консоли: ${consoleErrors.join(" | ")}`);

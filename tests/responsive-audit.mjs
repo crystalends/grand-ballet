@@ -317,6 +317,9 @@ const getLayoutState = () => {
     })()
     : [];
 
+  const newsPageHorizontalOverflowGuardIssue = document.body.classList.contains("news-page")
+    && getComputedStyle(document.body).overflowX !== "hidden";
+
   return {
     clientWidth: root.clientWidth,
     scrollWidth: root.scrollWidth,
@@ -336,6 +339,7 @@ const getLayoutState = () => {
     mobileHomeAboutButtonIssues,
     franchiseLaunchCardGapIssues,
     mobileFranchiseLaunchCardHeightIssues,
+    newsPageHorizontalOverflowGuardIssue,
   };
 };
 
@@ -442,6 +446,9 @@ try {
       }
       if (state.mobileFranchiseLaunchCardHeightIssues.length) {
         failures.push(`${pageName} @ ${width}px: franchise launch cards do not use the shared mobile height ${JSON.stringify(state.mobileFranchiseLaunchCardHeightIssues)}`);
+      }
+      if (state.newsPageHorizontalOverflowGuardIssue) {
+        failures.push(`${pageName} @ ${width}px: news page does not prevent viewport-level horizontal scrolling`);
       }
       if (consoleErrors.length) {
         failures.push(`${pageName} @ ${width}px: console errors ${consoleErrors.join(" | ")}`);

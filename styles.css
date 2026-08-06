@@ -2587,6 +2587,7 @@ textarea:focus-visible,
 .news-card__link { margin-bottom: -.36px; }
 
 /* News page */
+.news-page { overflow-x: hidden; }
 .news-hero { min-height: 215px; margin-top: 10px; }
 .news-hero__breadcrumb { width: 715px; min-height: 17px; color: var(--color-muted); font-size: 14px; line-height: 17px; }
 .news-hero__copy { display: flex; flex-direction: column; gap: 9.95px; width: 1150px; min-height: 158px; margin-top: 40px; }
@@ -4505,12 +4506,19 @@ textarea:focus-visible,
     place-items: center;
   }
 
+  .college-header__icon-button {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+    padding: 9px;
+  }
+
   .site-header__menu-icon,
   .college-header__menu-icon {
     position: relative;
     display: block;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     font-size: 0;
     line-height: 0;
   }
@@ -4520,9 +4528,9 @@ textarea:focus-visible,
   .college-header__menu-icon::before,
   .college-header__menu-icon::after {
     position: absolute;
-    left: 2px;
-    width: 16px;
-    height: 1.5px;
+    left: 0;
+    width: 24px;
+    height: 2px;
     border-radius: 2px;
     content: "";
     background: currentColor;
@@ -4535,23 +4543,23 @@ textarea:focus-visible,
 
   .site-header__menu-icon::before,
   .college-header__menu-icon::before {
-    top: 4px;
-    box-shadow: 0 5.25px 0 currentColor;
+    top: 3px;
+    box-shadow: 0 8px 0 currentColor;
   }
 
   .site-header__menu-icon::after,
-  .college-header__menu-icon::after { bottom: 4px; }
+  .college-header__menu-icon::after { bottom: 3px; }
 
   .site-header__menu-toggle[aria-expanded="true"] .site-header__menu-icon::before,
   .college-header__menu-toggle[aria-expanded="true"] .college-header__menu-icon::before {
-    top: 9px;
+    top: 11px;
     box-shadow: none;
     transform: rotate(45deg);
   }
 
   .site-header__menu-toggle[aria-expanded="true"] .site-header__menu-icon::after,
   .college-header__menu-toggle[aria-expanded="true"] .college-header__menu-icon::after {
-    bottom: 9.5px;
+    bottom: 11px;
     transform: rotate(-45deg);
   }
 
@@ -4919,6 +4927,47 @@ textarea:focus-visible,
     width: 42px;
     height: 42px;
     flex-basis: 42px;
+  }
+
+  .college-header__icon-button {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+    padding: 8px;
+  }
+
+  .college-header__icon,
+  .site-header__menu-icon,
+  .college-header__menu-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .site-header__menu-icon::before,
+  .site-header__menu-icon::after,
+  .college-header__menu-icon::before,
+  .college-header__menu-icon::after {
+    width: 20px;
+    height: 1.5px;
+  }
+
+  .site-header__menu-icon::before,
+  .college-header__menu-icon::before {
+    top: 2.5px;
+    box-shadow: 0 6.75px 0 currentColor;
+  }
+
+  .site-header__menu-icon::after,
+  .college-header__menu-icon::after { bottom: 2.5px; }
+
+  .site-header__menu-toggle[aria-expanded="true"] .site-header__menu-icon::before,
+  .college-header__menu-toggle[aria-expanded="true"] .college-header__menu-icon::before {
+    top: 9.25px;
+  }
+
+  .site-header__menu-toggle[aria-expanded="true"] .site-header__menu-icon::after,
+  .college-header__menu-toggle[aria-expanded="true"] .college-header__menu-icon::after {
+    bottom: 9.25px;
   }
 
   .site-header__nav,
@@ -5323,6 +5372,12 @@ textarea:focus-visible,
     width: 40px;
     height: 40px;
     flex-basis: 40px;
+  }
+  .college-header__icon-button {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+    padding: 7px;
   }
   .teacher-directory__grid,
   .awards-gallery { grid-template-columns: 1fr; }
