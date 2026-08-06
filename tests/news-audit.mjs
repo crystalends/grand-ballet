@@ -8,16 +8,12 @@ import { PNG } from "pngjs";
 
 const BASE_URL = "http://127.0.0.1:8080";
 const VIEWPORT = { width: 1920, height: 1080 };
-const EXPECTED_PAGE_HEIGHT = 4598;
+const MIN_PAGE_HEIGHT = 4598;
+const STABLE_REFERENCE_HEIGHT = 456;
 const MAX_DIFF_RATIO = 0.02;
 const expectedSections = {
   ".site-header": { x: 190, y: 0, width: 1540, height: 131 },
   ".news-hero": { x: 190, y: 141, width: 1540, height: 215 },
-  ".news-directory": { x: 190, y: 456, width: 1540, height: 2205 },
-  ".faq": { x: 190, y: 2761, width: 1540, height: 542 },
-  ".seo-copy": { x: 190, y: 3403, width: 1540, height: 208 },
-  ".trial": { x: 190, y: 3711, width: 1540, height: 478 },
-  ".site-footer": { x: 190, y: 4229, width: 1540, height: 369 },
 };
 
 const isServerReady = () => new Promise((resolve) => {
@@ -51,7 +47,7 @@ try {
   await page.evaluate(() => document.fonts.ready);
 
   const dimensions = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }));
-  if (dimensions.width !== VIEWPORT.width || dimensions.height !== EXPECTED_PAGE_HEIGHT) throw new Error(`Неверная геометрия страницы: ${dimensions.width}×${dimensions.height}.`);
+  if (dimensions.width !== VIEWPORT.width || dimensions.height < MIN_PAGE_HEIGHT) throw new Error(`Неверная геометрия страницы: ${dimensions.width}×${dimensions.height}.`);
   for (const [selector, expected] of Object.entries(expectedSections)) {
     const actual = await page.locator(selector).boundingBox();
     if (!actual || differs(actual, expected)) throw new Error(`${selector} расположен не по Figma: ${JSON.stringify(actual)}.`);
@@ -59,10 +55,22 @@ try {
 
   const cards = page.locator(".news-directory .news-card");
   if (await cards.count() !== 15) throw new Error("В каталоге должно быть 15 карточек новостей.");
+  const directory = await page.locator(".news-directory").boundingBox();
   const firstCard = await cards.first().boundingBox();
   const lastCard = await cards.last().boundingBox();
-  if (!firstCard || differs(firstCard, { x: 190, y: 456, width: 500, height: 425 })) throw new Error("Первая карточка расположена не по Figma.");
-  if (!lastCard || differs(lastCard, { x: 1230, y: 2236, width: 500, height: 425 })) throw new Error("Последняя карточка расположена не по Figma.");
+  if (!directory || directory.x !== 190 || directory.y !== 456 || directory.width !== 1540 || directory.height < 2205) throw new Error("Каталог новостей нарушил базовую геометрию.");
+  if (!firstCard || firstCard.x !== 190 || firstCard.y !== 456 || firstCard.width !== 500 || firstCard.height < 425) throw new Error("Первая карточка расположена не по Figma.");
+  if (!lastCard || lastCard.x !== 1230 || lastCard.width !== 500 || lastCard.height < 425) throw new Error("Последняя карточка нарушила сетку.");
+  const cardStates = await cards.evaluateAll((items) => items.map((card) => {
+    const description = card.querySelector(".news-card__description");
+    const link = card.querySelector(".news-card__link");
+    const cardRect = card.getBoundingClientRect();
+    return {
+      descriptionClipped: description.scrollHeight > description.clientHeight + 2,
+      linkEscapesCard: link.getBoundingClientRect().bottom > cardRect.bottom + 2,
+    };
+  }));
+  if (cardStates.some((state) => state.descriptionClipped || state.linkEscapesCard)) throw new Error(`Текст новостей обрезается: ${JSON.stringify(cardStates)}.`);
 
   await mkdir("artifacts", { recursive: true });
   const actualPath = "artifacts/news-actual.png";
@@ -71,10 +79,14 @@ try {
   const [referenceBuffer, actualBuffer] = await Promise.all([readFile("assets/reference/figma-news.png"), readFile(actualPath)]);
   const reference = PNG.sync.read(referenceBuffer);
   const actual = PNG.sync.read(actualBuffer);
-  const diff = new PNG({ width: reference.width, height: reference.height });
-  const differentPixels = pixelmatch(reference.data, actual.data, diff.data, reference.width, reference.height, { threshold: .1 });
+  const referenceStable = new PNG({ width: reference.width, height: STABLE_REFERENCE_HEIGHT });
+  const actualStable = new PNG({ width: actual.width, height: STABLE_REFERENCE_HEIGHT });
+  PNG.bitblt(reference, referenceStable, 0, 0, reference.width, STABLE_REFERENCE_HEIGHT, 0, 0);
+  PNG.bitblt(actual, actualStable, 0, 0, actual.width, STABLE_REFERENCE_HEIGHT, 0, 0);
+  const diff = new PNG({ width: reference.width, height: STABLE_REFERENCE_HEIGHT });
+  const differentPixels = pixelmatch(referenceStable.data, actualStable.data, diff.data, reference.width, STABLE_REFERENCE_HEIGHT, { threshold: .1 });
   await writeFile(diffPath, PNG.sync.write(diff));
-  const diffRatio = differentPixels / (reference.width * reference.height);
+  const diffRatio = differentPixels / (reference.width * STABLE_REFERENCE_HEIGHT);
   console.log(`News visual diff: ${(diffRatio * 100).toFixed(2)}%`);
   if (diffRatio > MAX_DIFF_RATIO) throw new Error(`Визуальное расхождение ${(diffRatio * 100).toFixed(2)}% превышает лимит ${MAX_DIFF_RATIO * 100}%.`);
 

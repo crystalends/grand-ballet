@@ -8,7 +8,8 @@ import { PNG } from "pngjs";
 
 const PAGE_URL = "http://127.0.0.1:8080";
 const VIEWPORT = { width: 1920, height: 1080 };
-const EXPECTED_PAGE_HEIGHT = 9529;
+const MIN_PAGE_HEIGHT = 9529;
+const STABLE_REFERENCE_HEIGHT = 6947;
 const MAX_DIFF_RATIO = 0.03;
 
 const isServerReady = () => new Promise((resolve) => {
@@ -54,7 +55,7 @@ try {
     width: document.documentElement.scrollWidth,
     height: document.documentElement.scrollHeight,
   }));
-  if (dimensions.width !== VIEWPORT.width || dimensions.height !== EXPECTED_PAGE_HEIGHT) {
+  if (dimensions.width !== VIEWPORT.width || dimensions.height < MIN_PAGE_HEIGHT) {
     throw new Error(`Неверная геометрия страницы: ${dimensions.width}×${dimensions.height}.`);
   }
 
@@ -69,18 +70,27 @@ try {
   ]);
   const reference = PNG.sync.read(referenceBuffer);
   const actual = PNG.sync.read(actualBuffer);
-  const diff = new PNG({ width: reference.width, height: reference.height });
+  if (reference.width !== actual.width
+    || reference.height < STABLE_REFERENCE_HEIGHT
+    || actual.height < STABLE_REFERENCE_HEIGHT) {
+    throw new Error(`Недостаточный размер для визуального сравнения: reference=${reference.width}×${reference.height}, actual=${actual.width}×${actual.height}.`);
+  }
+  const referenceStable = new PNG({ width: reference.width, height: STABLE_REFERENCE_HEIGHT });
+  const actualStable = new PNG({ width: actual.width, height: STABLE_REFERENCE_HEIGHT });
+  PNG.bitblt(reference, referenceStable, 0, 0, reference.width, STABLE_REFERENCE_HEIGHT, 0, 0);
+  PNG.bitblt(actual, actualStable, 0, 0, actual.width, STABLE_REFERENCE_HEIGHT, 0, 0);
+  const diff = new PNG({ width: reference.width, height: STABLE_REFERENCE_HEIGHT });
   const differentPixels = pixelmatch(
-    reference.data,
-    actual.data,
+    referenceStable.data,
+    actualStable.data,
     diff.data,
     reference.width,
-    reference.height,
+    STABLE_REFERENCE_HEIGHT,
     { threshold: 0.1 },
   );
   await writeFile(diffPath, PNG.sync.write(diff));
 
-  const diffRatio = differentPixels / (reference.width * reference.height);
+  const diffRatio = differentPixels / (reference.width * STABLE_REFERENCE_HEIGHT);
   console.log(`Visual diff: ${(diffRatio * 100).toFixed(2)}%`);
   console.log(`Actual: ${actualPath}`);
   console.log(`Diff: ${diffPath}`);

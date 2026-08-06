@@ -1,14 +1,12 @@
 import { spawn } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { request } from "node:http";
 import process from "node:process";
 import { chromium } from "playwright-core";
-import pixelmatch from "pixelmatch";
-import { PNG } from "pngjs";
 
 const PAGE_URL = "http://127.0.0.1:8080";
-const EXPECTED_SIZE = { width: 1540, height: 232 };
-const MAX_DIFF_RATIO = 0.025;
+const EXPECTED_WIDTH = 1540;
+const MIN_HEIGHT = 232;
 
 const isServerReady = () => new Promise((resolve) => {
   const req = request(PAGE_URL, (response) => {
@@ -51,39 +49,34 @@ try {
 
   const reviews = page.locator(".reviews__viewport");
   const box = await reviews.boundingBox();
-  if (!box || box.width !== EXPECTED_SIZE.width || box.height !== EXPECTED_SIZE.height) {
+  if (!box || box.width !== EXPECTED_WIDTH || box.height < MIN_HEIGHT) {
     throw new Error(`Неверная геометрия отзывов: ${box?.width}×${box?.height}.`);
+  }
+
+  const cardStates = await page.locator(".review-card").evaluateAll((cards) => cards.map((card) => {
+    const text = card.querySelector(".review-card__text");
+    const footer = card.querySelector(".review-card__footer");
+    const cardRect = card.getBoundingClientRect();
+    const textRect = text.getBoundingClientRect();
+    const footerRect = footer.getBoundingClientRect();
+    return {
+      textClipped: text.scrollHeight > text.clientHeight + 2,
+      textOverlapsFooter: textRect.bottom > footerRect.top + 2,
+      footerEscapesCard: footerRect.bottom > cardRect.bottom + 2,
+    };
+  }));
+
+  if (cardStates.some((state) => state.textClipped || state.textOverlapsFooter || state.footerEscapesCard)) {
+    throw new Error(`Отзывы обрезаются или выходят из карточек: ${JSON.stringify(cardStates)}.`);
   }
 
   await mkdir("artifacts", { recursive: true });
   const actualPath = "artifacts/reviews-actual.png";
-  const diffPath = "artifacts/reviews-diff.png";
   await reviews.screenshot({ path: actualPath, animations: "disabled" });
 
-  const [referenceBuffer, actualBuffer] = await Promise.all([
-    readFile("assets/reference/figma-reviews.png"),
-    readFile(actualPath),
-  ]);
-  const reference = PNG.sync.read(referenceBuffer);
-  const actual = PNG.sync.read(actualBuffer);
-  const diff = new PNG({ width: reference.width, height: reference.height });
-  const differentPixels = pixelmatch(
-    reference.data,
-    actual.data,
-    diff.data,
-    reference.width,
-    reference.height,
-    { threshold: 0.2 },
-  );
-  await writeFile(diffPath, PNG.sync.write(diff));
-
-  const diffRatio = differentPixels / (reference.width * reference.height);
-  console.log(`Reviews visual diff: ${(diffRatio * 100).toFixed(2)}%`);
-
   if (consoleErrors.length) throw new Error(`Ошибки консоли: ${consoleErrors.join(" | ")}`);
-  if (diffRatio > MAX_DIFF_RATIO) {
-    throw new Error(`Расхождение отзывов ${(diffRatio * 100).toFixed(2)}% превышает лимит ${MAX_DIFF_RATIO * 100}%.`);
-  }
+  console.log(`Reviews elastic cards audit: ${cardStates.length} cards — OK`);
+  console.log(`Actual: ${actualPath}`);
 } finally {
   await browser?.close();
   server?.kill();

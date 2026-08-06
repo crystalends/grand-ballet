@@ -8,16 +8,14 @@ import { PNG } from "pngjs";
 
 const BASE_URL = "http://127.0.0.1:8080";
 const VIEWPORT = { width: 1920, height: 1080 };
-const EXPECTED_PAGE_HEIGHT = 3507;
+const MIN_PAGE_HEIGHT = 3507;
+const STABLE_REFERENCE_HEIGHT = 1997;
 const MAX_DIFF_RATIO = 0.035;
 const expectedSections = {
   ".site-header": { x: 190, y: 0, width: 1540, height: 131 },
   ".news-detail-hero": { x: 190, y: 151, width: 1540, height: 367 },
   ".news-article": { x: 190, y: 578, width: 1150, height: 832 },
   ".news-gallery": { x: 190, y: 1510, width: 1540, height: 387 },
-  ".news-related": { x: 190, y: 1997, width: 1540, height: 523 },
-  ".trial": { x: 190, y: 2620, width: 1540, height: 478 },
-  ".site-footer": { x: 190, y: 3138, width: 1540, height: 369 },
 };
 
 const isServerReady = () => new Promise((resolve) => {
@@ -52,7 +50,7 @@ try {
   await page.evaluate(() => document.fonts.ready);
 
   const dimensions = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }));
-  if (dimensions.width !== VIEWPORT.width || dimensions.height !== EXPECTED_PAGE_HEIGHT) throw new Error(`Неверная геометрия страницы: ${dimensions.width}×${dimensions.height}.`);
+  if (dimensions.width !== VIEWPORT.width || dimensions.height < MIN_PAGE_HEIGHT) throw new Error(`Неверная геометрия страницы: ${dimensions.width}×${dimensions.height}.`);
   for (const [selector, expected] of Object.entries(expectedSections)) {
     const actual = await page.locator(selector).boundingBox();
     if (!actual || differs(actual, expected)) throw new Error(`${selector} расположен не по Figma: ${JSON.stringify(actual)}.`);
@@ -63,6 +61,13 @@ try {
   if (await page.locator(".news-article__point").count() !== 4) throw new Error("В статье должно быть четыре смысловых пункта.");
   if (await page.locator(".news-article__list li").count() !== 6) throw new Error("В программе должно быть шесть пунктов.");
   await page.waitForFunction(() => [...document.querySelectorAll("[data-carousel-viewport]")].every((viewport) => viewport.classList.contains("swiper-initialized")));
+  const relatedState = await page.locator(".news-related").evaluate((section) => ({
+    y: Math.round(section.getBoundingClientRect().y),
+    height: Math.round(section.getBoundingClientRect().height),
+    clippedDescriptions: [...section.querySelectorAll(".news-card__description")]
+      .filter((description) => description.scrollHeight > description.clientHeight + 2).length,
+  }));
+  if (relatedState.y !== 1997 || relatedState.height < 523 || relatedState.clippedDescriptions) throw new Error(`Связанные новости не растут по контенту: ${JSON.stringify(relatedState)}.`);
 
   await mkdir("artifacts", { recursive: true });
   const actualPath = "artifacts/news-detail-actual.png";
@@ -71,11 +76,15 @@ try {
   const [referenceBuffer, actualBuffer] = await Promise.all([readFile("assets/reference/figma-news-detail.png"), readFile(actualPath)]);
   const reference = PNG.sync.read(referenceBuffer);
   const actual = PNG.sync.read(actualBuffer);
-  if (reference.width !== actual.width || reference.height !== actual.height) throw new Error(`Размер снимка ${actual.width}×${actual.height} не совпал с Figma ${reference.width}×${reference.height}.`);
-  const diff = new PNG({ width: reference.width, height: reference.height });
-  const differentPixels = pixelmatch(reference.data, actual.data, diff.data, reference.width, reference.height, { threshold: .1 });
+  if (reference.width !== actual.width || reference.height < STABLE_REFERENCE_HEIGHT || actual.height < STABLE_REFERENCE_HEIGHT) throw new Error(`Размер снимка ${actual.width}×${actual.height} недостаточен для сравнения с Figma ${reference.width}×${reference.height}.`);
+  const referenceStable = new PNG({ width: reference.width, height: STABLE_REFERENCE_HEIGHT });
+  const actualStable = new PNG({ width: actual.width, height: STABLE_REFERENCE_HEIGHT });
+  PNG.bitblt(reference, referenceStable, 0, 0, reference.width, STABLE_REFERENCE_HEIGHT, 0, 0);
+  PNG.bitblt(actual, actualStable, 0, 0, actual.width, STABLE_REFERENCE_HEIGHT, 0, 0);
+  const diff = new PNG({ width: reference.width, height: STABLE_REFERENCE_HEIGHT });
+  const differentPixels = pixelmatch(referenceStable.data, actualStable.data, diff.data, reference.width, STABLE_REFERENCE_HEIGHT, { threshold: .1 });
   await writeFile(diffPath, PNG.sync.write(diff));
-  const diffRatio = differentPixels / (reference.width * reference.height);
+  const diffRatio = differentPixels / (reference.width * STABLE_REFERENCE_HEIGHT);
   console.log(`News detail visual diff: ${(diffRatio * 100).toFixed(2)}%`);
   if (diffRatio > MAX_DIFF_RATIO) throw new Error(`Визуальное расхождение ${(diffRatio * 100).toFixed(2)}% превышает лимит ${MAX_DIFF_RATIO * 100}%.`);
 

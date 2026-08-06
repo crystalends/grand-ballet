@@ -692,7 +692,7 @@ textarea:focus-visible,
 .audience__intro-title { font-family: "Playfair Display", serif; font-size: 34px; font-weight: 600; line-height: 42px; }
 .audience__grid { display: grid; grid-template-columns: repeat(2, 370px); grid-template-rows: repeat(2, minmax(206px, auto)); gap: 20px; }
 
-.info-card { display: flex; flex-direction: column; align-items: flex-start; overflow: hidden; border-radius: var(--radius-card); background: var(--color-surface); }
+.info-card { display: flex; height: auto; flex-direction: column; align-items: flex-start; border-radius: var(--radius-card); background: var(--color-surface); }
 .info-card--audience { justify-content: space-between; width: 370px; min-height: 206px; padding: 20px; }
 .info-card__icon { width: 24px; height: 24px; flex: 0 0 auto; object-fit: contain; }
 .info-card__icon--large { width: 30px; height: 30px; }
@@ -745,7 +745,7 @@ textarea:focus-visible,
 .teachers__viewport .swiper-slide { height: auto; }
 .teacher-card { position: relative; display: flex; flex-direction: column; gap: 5px; width: 370px; min-height: 475px; flex: 0 0 370px; }
 .teacher-card__image { width: 370px; height: 400px; border-radius: var(--radius-card); object-fit: cover; }
-.teacher-card__copy { display: flex; flex-direction: column; gap: 5px; min-height: 70px; padding: 10px; overflow: hidden; border-radius: var(--radius-card); background: var(--color-footer); }
+.teacher-card__copy { display: flex; height: auto; min-height: 70px; flex-direction: column; gap: 5px; padding: 10px; border-radius: var(--radius-card); background: var(--color-footer); }
 .teacher-card__name { font-size: 20px; font-weight: 600; line-height: 28px; }
 .teacher-card__role { font-size: 14px; }
 .teacher-card__trigger { position: absolute; z-index: 1; inset: 0; width: 100%; padding: 0; border: 0; border-radius: var(--radius-card); background: transparent; cursor: pointer; }
@@ -764,7 +764,7 @@ textarea:focus-visible,
 .teacher-trust__title { font-family: "Playfair Display", serif; font-size: 34px; font-weight: 600; line-height: 42px; }
 .teacher-trust__text { display: flex; flex-direction: column; gap: 5px; }
 .teacher-trust__grid { display: grid; grid-template-columns: repeat(2, 370px); grid-template-rows: repeat(2, minmax(180px, auto)); gap: 20px; }
-.teacher-trust-card { display: flex; flex-direction: column; justify-content: space-between; width: 370px; min-height: 180px; padding: 20px; overflow: hidden; border-radius: var(--radius-card); background: var(--color-surface); }
+.teacher-trust-card { display: flex; width: 370px; height: auto; min-height: 180px; flex-direction: column; justify-content: space-between; padding: 20px; border-radius: var(--radius-card); background: var(--color-surface); }
 .teacher-trust-card__icon { width: 30px; height: 30px; object-fit: contain; }
 .teacher-trust-card__copy { display: flex; flex-direction: column; gap: 5px; }
 .teacher-trust-card__title { font-size: 24px; font-weight: 600; line-height: 32px; }
@@ -822,7 +822,7 @@ textarea:focus-visible,
 .awards-summary__title { font-family: "Playfair Display", serif; font-size: 34px; font-weight: 600; line-height: 42px; }
 .awards-summary__text { display: flex; flex-direction: column; gap: 10px; }
 .awards-summary__grid { display: grid; grid-template-columns: repeat(2, 370px); grid-template-rows: repeat(2, minmax(180px, auto)); gap: 20px; }
-.achievement-card { display: flex; flex-direction: column; justify-content: space-between; width: 370px; min-height: 180px; padding: 20px; overflow: hidden; border-radius: var(--radius-card); background: var(--color-surface); }
+.achievement-card { display: flex; width: 370px; height: auto; min-height: 180px; flex-direction: column; justify-content: space-between; padding: 20px; border-radius: var(--radius-card); background: var(--color-surface); }
 .achievement-card__icon { width: 30px; height: 30px; object-fit: contain; }
 .achievement-card__copy { display: flex; flex-direction: column; gap: 5px; }
 .achievement-card__title { font-size: 24px; font-weight: 600; line-height: 32px; }
@@ -1383,7 +1383,7 @@ textarea:focus-visible,
   .school-director__facts { margin-top: 28px; }
   .director-fact--wide { grid-column: auto; }
   .school-format__grid, .school-roots__grid { margin-top: 28px; }
-  .format-card { height: 248px; }
+  .format-card { height: auto; min-height: 248px; }
   .school-mission__body { margin-top: 28px; }
   .school-mission__left { gap: 20px; }
   .school-mission__pair { gap: 20px; }
@@ -2252,6 +2252,7 @@ textarea:focus-visible,
   display: grid;
   grid-template-columns: 1020px 500px;
   gap: 20px;
+  height: auto;
   min-height: 734px;
   margin-top: 100px;
 }
@@ -2263,6 +2264,7 @@ textarea:focus-visible,
   justify-content: center;
   gap: 40px;
   width: 1020px;
+  height: auto;
   min-height: 734px;
   padding: 25.34px 40px;
   border-radius: var(--radius-large);
@@ -2330,7 +2332,9 @@ textarea:focus-visible,
 
 .home-about__image {
   width: 500px;
-  height: 734px;
+  height: auto;
+  min-height: 734px;
+  align-self: stretch;
   border-radius: var(--radius-large);
   object-fit: cover;
 }
@@ -2428,18 +2432,11 @@ textarea:focus-visible,
 
 .review-card__text {
   width: 100%;
-  height: 152px;
-  flex: 0 0 152px;
-  overflow: hidden;
+  height: auto;
+  min-height: 152px;
+  flex: 1 1 auto;
   font-size: 16px;
   line-height: 1.2;
-  text-overflow: ellipsis;
-}
-
-.review-card:not(.review-card--wide) .review-card__text {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 8;
 }
 
 .review-card__footer {
@@ -2556,10 +2553,7 @@ textarea:focus-visible,
 }
 
 .news-card__description {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 
 .news-card__meta { font-size: 14px; }
@@ -2919,7 +2913,7 @@ textarea:focus-visible,
   align-items: flex-start;
   min-height: 194px;
   padding: 20px;
-  border: 1px solid rgba(158, 42, 43, .35);
+  border: 1px solid var(--color-muted);
   border-radius: var(--radius-card);
 }
 .college-principle__icon,
@@ -2937,11 +2931,11 @@ textarea:focus-visible,
 .college-programs__grid { display: grid; grid-template-columns: repeat(2, 760px); gap: 20px; width: 100%; min-height: 250px; }
 .college-program {
   display: flex;
+  height: auto;
   flex-direction: column;
   align-items: flex-start;
   gap: 20px;
   min-height: 250px;
-  overflow: hidden;
   padding: 20px 20px 19.0625px;
   border-radius: var(--radius-large);
   background: var(--color-surface);
@@ -3630,7 +3624,7 @@ textarea:focus-visible,
   .director-route__pair { gap: 16px; margin-top: 24px; }
   .director-route__pair--tall { margin-top: 16px; }
   .mission-card--route-short,
-  .mission-card--route-tall { height: 260px; min-height: 250px; }
+  .mission-card--route-tall { height: auto; min-height: 260px; }
 
   .director-gallery__viewport { margin-top: 28px; scrollbar-width: none; }
   .director-gallery__image { width: min(calc(100vw - 32px), 500px); height: auto; flex-basis: min(calc(100vw - 32px), 500px); aspect-ratio: 500 / 260; }
@@ -3693,7 +3687,7 @@ textarea:focus-visible,
   .home-about__intro, .home-about__mission { width: 100%; }
   .home-about__stats { grid-template-columns: 1fr; width: 100%; }
   .home-about__stat { width: 100%; }
-  .home-about__image { height: auto; aspect-ratio: .68; }
+  .home-about__image { height: auto; min-height: 0; align-self: auto; aspect-ratio: .68; }
   .addresses__list { height: auto; min-height: 0; }
   .addresses__map { height: auto; aspect-ratio: 2.2; }
   .reviews__heading, .home-news__heading { height: auto; min-height: 0; align-items: flex-start; gap: 16px; }
@@ -5631,16 +5625,11 @@ textarea:focus-visible,
   gap: 10px;
 }
 
-.direction-guide__mark {
-  display: grid;
+.direction-guide__icon {
   width: 30px;
   height: 30px;
   flex: 0 0 30px;
-  border: 1px solid var(--color-gold);
-  border-radius: 50%;
-  color: var(--color-gold);
-  font-size: 15px;
-  place-items: center;
+  object-fit: contain;
 }
 
 .benefits--directions {
@@ -6009,12 +5998,12 @@ textarea:focus-visible,
 
 .franchise-income__card {
   display: flex;
+  height: auto;
   flex-direction: column;
   justify-content: flex-end;
   width: 370px;
   min-height: 180px;
   padding: 20px;
-  overflow: hidden;
   border-radius: var(--radius-card);
   background: var(--color-surface);
 }
@@ -6059,12 +6048,12 @@ textarea:focus-visible,
 
 .franchise-proof__card {
   display: flex;
+  height: auto;
   flex-direction: column;
   justify-content: space-between;
   width: 370px;
   min-height: 159px;
   padding: 20px;
-  overflow: hidden;
   border-radius: var(--radius-card);
   background: rgba(244, 210, 171, .2);
 }
@@ -6091,12 +6080,12 @@ textarea:focus-visible,
 
 .franchise-launch__card {
   display: flex;
+  height: auto;
   flex-direction: column;
   justify-content: space-between;
   width: 292px;
   min-height: 271px;
   padding: 20px;
-  overflow: hidden;
   border-radius: var(--radius-card);
   background: rgba(244, 210, 171, .2);
 }
@@ -6155,12 +6144,12 @@ textarea:focus-visible,
 
 .franchise-support__card {
   display: flex;
+  height: auto;
   flex-direction: column;
   justify-content: space-between;
   width: 370px;
   min-height: 208px;
   padding: 20px;
-  overflow: hidden;
   border-radius: var(--radius-card);
   background: var(--color-surface);
 }
@@ -6193,8 +6182,8 @@ textarea:focus-visible,
 
 .franchise-package__copy {
   width: 370px;
+  height: auto;
   min-height: 0;
-  overflow: hidden;
 }
 
 .franchise-package__column:nth-child(1) .franchise-package__copy {
@@ -6291,13 +6280,13 @@ textarea:focus-visible,
 
 .franchise-finance__card {
   display: flex;
+  height: auto;
   flex-direction: column;
   align-items: center;
   gap: 20px;
   width: 760px;
   min-height: 376px;
   padding: 20px;
-  overflow: hidden;
   border-radius: var(--radius-large);
   background: var(--color-surface);
 }
@@ -6448,11 +6437,11 @@ textarea:focus-visible,
 
 .franchise-plan {
   display: flex;
+  height: auto;
   flex-direction: column;
   width: 500px;
   min-height: 471px;
   padding: 20px;
-  overflow: hidden;
   border-radius: var(--radius-large);
   background: var(--color-surface);
 }
@@ -6594,10 +6583,10 @@ textarea:focus-visible,
   display: grid;
   grid-template-columns: 506px 854px;
   gap: 100px;
+  height: auto;
   min-height: 482px;
   margin-top: 100px;
   padding: 40px;
-  overflow: hidden;
   border-radius: var(--radius-large);
   background: rgba(219, 176, 125, .2);
 }
@@ -7244,11 +7233,11 @@ textarea:focus-visible,
 .contact-location {
   display: flex;
   width: 760px;
+  height: auto;
   min-height: 421px;
   padding: 20px 20px 17.953125px;
   flex-direction: column;
   gap: 20px;
-  overflow: hidden;
   border-radius: 40px;
   background: var(--color-surface);
 }

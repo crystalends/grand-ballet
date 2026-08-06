@@ -36,6 +36,7 @@ const VIEWPORTS = process.env.CONTENT_AUDIT_VIEWPORTS
 const FLOW_CASES = {
   "index.html": [
     [".direction-picker", ".direction-picker__title", ".direction-picker__grid"],
+    [".home-about__panel", ".home-about__text p:last-child", ".home-about__mission"],
   ],
   "service.html": [
     [".lesson-flow", ".lesson-flow__intro p", ".lesson-flow__grid"],
@@ -76,6 +77,11 @@ const FLOW_CASES = {
   ],
   "contacts.html": [
     [".contacts-locations", ".contacts-locations__title", ".contacts-locations__grid"],
+  ],
+};
+const MATCHED_HEIGHT_CASES = {
+  "index.html": [
+    [".home-about__panel", ".home-about__image", ".home-about__text p:last-child", 1281],
   ],
 };
 
@@ -139,6 +145,31 @@ const verifyFlowDisplacement = (cases) => cases.flatMap(([containerSelector, tex
   }];
 });
 
+const verifyMatchedHeightGrowth = (cases) => cases.flatMap(([contentSelector, mediaSelector, textSelector, minViewportWidth]) => {
+  if (window.innerWidth < minViewportWidth) return [];
+
+  const content = document.querySelector(contentSelector);
+  const media = document.querySelector(mediaSelector);
+  const text = document.querySelector(textSelector);
+  if (!content || !media || !text) {
+    return [{ contentSelector, mediaSelector, error: "Не найден один из элементов проверки парной высоты." }];
+  }
+
+  const originalText = text.textContent;
+  text.append(document.createTextNode(` ${originalText.trim()} ${originalText.trim()} ${originalText.trim()}`));
+  const contentHeight = content.getBoundingClientRect().height;
+  const mediaHeight = media.getBoundingClientRect().height;
+  text.textContent = originalText;
+
+  if (Math.abs(contentHeight - mediaHeight) <= 2) return [];
+  return [{
+    contentSelector,
+    mediaSelector,
+    contentHeight: Math.round(contentHeight),
+    mediaHeight: Math.round(mediaHeight),
+  }];
+});
+
 const stressContent = () => {
   const primarySelector = [
     "main h1",
@@ -166,6 +197,7 @@ const stressContent = () => {
       const style = getComputedStyle(element);
       const text = element.textContent.trim();
       return text
+        && !element.matches(".visually-hidden, .visually-hidden *")
         && style.display !== "none"
         && style.visibility !== "hidden"
         && !element.closest("dialog, [role='dialog']");
@@ -290,6 +322,21 @@ const stressContent = () => {
       scrollHeight: element.scrollHeight,
     }));
 
+  const clippedText = targets
+    .filter((element) => {
+      const style = getComputedStyle(element);
+      return element.clientHeight > 0
+        && (style.overflowY === "hidden" || style.overflowY === "clip")
+        && element.scrollHeight > element.clientHeight + 2;
+    })
+    .map((element) => ({
+      element: getClassName(element) || element.tagName.toLowerCase(),
+      text: element.textContent.trim().replace(/\s+/g, " ").slice(0, 70),
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }))
+    .slice(0, 20);
+
   const root = document.documentElement;
   const horizontalOverflow = root.scrollWidth > root.clientWidth + 2
     ? {
@@ -329,6 +376,7 @@ const stressContent = () => {
     targetCount: targets.length,
     escapedText: escapedText.slice(0, 20),
     clippedContainers: clippedContainers.slice(0, 20),
+    clippedText,
     siblingOverlaps,
     horizontalOverflow,
   };
@@ -354,14 +402,17 @@ try {
       await page.goto(`${BASE_URL}/${pageName}`, { waitUntil: "networkidle" });
       await page.evaluate(() => document.fonts.ready);
       const flowFailures = await page.evaluate(verifyFlowDisplacement, FLOW_CASES[pageName] || []);
+      const matchedHeightFailures = await page.evaluate(verifyMatchedHeightGrowth, MATCHED_HEIGHT_CASES[pageName] || []);
       const result = await page.evaluate(stressContent);
 
       if (flowFailures.length
+        || matchedHeightFailures.length
         || result.escapedText.length
         || result.clippedContainers.length
+        || result.clippedText.length
         || result.siblingOverlaps.length
         || result.horizontalOverflow) {
-        failures.push({ pageName, width, flowFailures, ...result });
+        failures.push({ pageName, width, flowFailures, matchedHeightFailures, ...result });
       }
     }
   }
