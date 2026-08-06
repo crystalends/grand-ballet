@@ -85,6 +85,21 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload({ waitUntil: "networkidle" });
+  await page.addStyleTag({ content: "html { scrollbar-gutter: stable; }" });
+  const mobileDirectionTabsState = await page.locator(".direction-picker__tabs").evaluate((tabs) => {
+    tabs.scrollLeft = tabs.scrollWidth;
+    return {
+      clientWidth: tabs.clientWidth,
+      scrollWidth: tabs.scrollWidth,
+      scrollLeft: tabs.scrollLeft,
+      scrollbarWidth: getComputedStyle(tabs).scrollbarWidth,
+    };
+  });
+  if (mobileDirectionTabsState.scrollWidth <= mobileDirectionTabsState.clientWidth
+    || mobileDirectionTabsState.scrollLeft <= 0
+    || mobileDirectionTabsState.scrollbarWidth !== "none") {
+    throw new Error(`Табы направлений должны прокручиваться без видимого scrollbar: ${JSON.stringify(mobileDirectionTabsState)}.`);
+  }
   const mobileTextarea = page.locator(".trial-form__textarea").first();
   await mobileTextarea.fill("А".repeat(500));
   const mobileTextareaState = await mobileTextarea.evaluate((element) => ({
@@ -116,10 +131,15 @@ try {
       return {
         previousOverlapsEdge: previous.left < viewportRect.left && previous.right > viewportRect.left,
         nextOverlapsEdge: next.left < viewportRect.right && next.right > viewportRect.right,
+        previousInsideViewport: previous.left >= 0,
+        nextInsideViewport: next.right <= document.documentElement.clientWidth,
       };
     });
-    if (!arrowOverlapState.previousOverlapsEdge || !arrowOverlapState.nextOverlapsEdge) {
-      throw new Error(`Мобильные стрелки должны частично выступать за края слайда: ${JSON.stringify(arrowOverlapState)}.`);
+    if (!arrowOverlapState.previousOverlapsEdge
+      || !arrowOverlapState.nextOverlapsEdge
+      || !arrowOverlapState.previousInsideViewport
+      || !arrowOverlapState.nextInsideViewport) {
+      throw new Error(`Мобильные стрелки должны частично выступать за края слайда, не выходя за viewport: ${JSON.stringify(arrowOverlapState)}.`);
     }
     await viewport.hover();
     await page.mouse.wheel(1200, 0);

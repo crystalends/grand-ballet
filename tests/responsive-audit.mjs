@@ -275,6 +275,48 @@ const getLayoutState = () => {
     })
     : [];
 
+  const mobileHomeAboutButtonIssues = root.clientWidth <= 700
+    ? [...document.querySelectorAll(".home-about__button")].flatMap((button) => {
+      const panel = button.closest(".home-about__panel");
+      if (!panel) return [{ error: "home about button has no panel" }];
+      const panelStyle = getComputedStyle(panel);
+      const availableWidth = panel.getBoundingClientRect().width
+        - parseFloat(panelStyle.paddingLeft)
+        - parseFloat(panelStyle.paddingRight);
+      const buttonWidth = button.getBoundingClientRect().width;
+      return Math.abs(buttonWidth - availableWidth) > 1
+        ? [{ buttonWidth: Math.round(buttonWidth), availableWidth: Math.round(availableWidth) }]
+        : [];
+    })
+    : [];
+
+  const franchiseLaunchCardGapIssues = root.clientWidth <= 1280
+    ? [...document.querySelectorAll(".franchise-launch__card")]
+      .flatMap((card, index) => {
+        const icon = card.querySelector(".franchise-launch__card-icon");
+        const content = card.querySelector(".franchise-launch__card-content");
+        if (!icon || !content) return [{ index, error: "incomplete franchise launch card" }];
+        const gap = content.getBoundingClientRect().top - icon.getBoundingClientRect().bottom;
+        return Math.abs(gap - 20) > 1 ? [{ index, gap: Math.round(gap) }] : [];
+      })
+    : [];
+
+  const mobileFranchiseLaunchCardHeightIssues = root.clientWidth <= 700
+    ? (() => {
+      const cards = [...document.querySelectorAll(".franchise-launch__card")];
+      if (!cards.length) return [];
+      const sharedMinHeight = parseFloat(getComputedStyle(root).getPropertyValue("--mobile-card-min-feature"));
+      const heights = cards.map((card) => card.getBoundingClientRect().height);
+      const mismatchedMinHeights = cards
+        .map((card, index) => ({ index, minHeight: parseFloat(getComputedStyle(card).minHeight) }))
+        .filter(({ minHeight }) => Math.abs(minHeight - sharedMinHeight) > 1);
+      const unequalHeights = heights.some((height) => Math.abs(height - heights[0]) > 1);
+      return mismatchedMinHeights.length || unequalHeights
+        ? [{ sharedMinHeight, heights: heights.map(Math.round), mismatchedMinHeights }]
+        : [];
+    })()
+    : [];
+
   return {
     clientWidth: root.clientWidth,
     scrollWidth: root.scrollWidth,
@@ -291,6 +333,9 @@ const getLayoutState = () => {
     tabletNewsCarouselSizingIssues,
     tabletTeacherDirectoryIssues,
     adaptiveCollegeFooterBrandIssues,
+    mobileHomeAboutButtonIssues,
+    franchiseLaunchCardGapIssues,
+    mobileFranchiseLaunchCardHeightIssues,
   };
 };
 
@@ -325,6 +370,29 @@ try {
           .every((viewport) => viewport.classList.contains("swiper-initialized")));
       }
       const state = await page.evaluate(getLayoutState);
+      const scrollbarGutterStyle = await page.addStyleTag({ content: "html { scrollbar-gutter: stable; }" });
+      const escapedCarouselButtonsWithClassicScrollbar = await page.evaluate(() => {
+        const root = document.documentElement;
+        return [...document.querySelectorAll(".carousel__button")]
+          .filter((button) => {
+            const rect = button.getBoundingClientRect();
+            const style = getComputedStyle(button);
+            return style.display !== "none"
+              && style.visibility !== "hidden"
+              && rect.width > 0
+              && (rect.left < -1 || rect.right > root.clientWidth + 1);
+          })
+          .map((button) => {
+            const rect = button.getBoundingClientRect();
+            return {
+              className: button.className,
+              left: Math.round(rect.left),
+              right: Math.round(rect.right),
+              clientWidth: root.clientWidth,
+            };
+          });
+      });
+      await scrollbarGutterStyle.evaluate((style) => style.remove());
       if (TAKE_SCREENSHOTS) {
         await page.screenshot({
           path: `artifacts/responsive/${pageName.replace(".html", "")}-${width}.png`,
@@ -341,6 +409,9 @@ try {
       }
       if (state.escapedInteractiveElements.length) {
         failures.push(`${pageName} @ ${width}px: controls outside viewport ${JSON.stringify(state.escapedInteractiveElements)}`);
+      }
+      if (escapedCarouselButtonsWithClassicScrollbar.length) {
+        failures.push(`${pageName} @ ${width}px: carousel controls outside viewport with classic scrollbar ${JSON.stringify(escapedCarouselButtonsWithClassicScrollbar)}`);
       }
       if (state.clippedTextElements.length) {
         failures.push(`${pageName} @ ${width}px: clipped text ${JSON.stringify(state.clippedTextElements)}`);
@@ -362,6 +433,15 @@ try {
       }
       if (state.adaptiveCollegeFooterBrandIssues.length) {
         failures.push(`${pageName} @ ${width}px: college footer brand has an oversized logo or excessive spacing ${JSON.stringify(state.adaptiveCollegeFooterBrandIssues)}`);
+      }
+      if (state.mobileHomeAboutButtonIssues.length) {
+        failures.push(`${pageName} @ ${width}px: home about CTA is not full width ${JSON.stringify(state.mobileHomeAboutButtonIssues)}`);
+      }
+      if (state.franchiseLaunchCardGapIssues.length) {
+        failures.push(`${pageName} @ ${width}px: franchise launch card progress gap is inconsistent ${JSON.stringify(state.franchiseLaunchCardGapIssues)}`);
+      }
+      if (state.mobileFranchiseLaunchCardHeightIssues.length) {
+        failures.push(`${pageName} @ ${width}px: franchise launch cards do not use the shared mobile height ${JSON.stringify(state.mobileFranchiseLaunchCardHeightIssues)}`);
       }
       if (consoleErrors.length) {
         failures.push(`${pageName} @ ${width}px: console errors ${consoleErrors.join(" | ")}`);

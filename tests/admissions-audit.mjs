@@ -67,6 +67,29 @@ try {
   if (await page.locator(".college-path--admissions .college-principle").count() !== 4) throw new Error("В блоке аудитории должно быть четыре карточки.");
   if (await page.locator(".college-program").count() !== 2) throw new Error("Должно быть две образовательные программы.");
   if (await page.locator(".college-admission .admission-step").count() !== 6) throw new Error("Должно быть шесть этапов поступления.");
+  const elasticStepState = await page.locator(".admission-step--five").evaluate((card) => {
+    const description = card.querySelector("p");
+    const originalText = description.textContent;
+    const initialHeight = card.getBoundingClientRect().height;
+    description.textContent = Array(6).fill(originalText).join(" ");
+    const cardRect = card.getBoundingClientRect();
+    const descriptionRect = description.getBoundingClientRect();
+    const progressRect = card.querySelector(".admission-step__progress").getBoundingClientRect();
+    const contentRect = card.querySelector(".admission-step__content").getBoundingClientRect();
+    const state = {
+      initialHeight,
+      expandedHeight: cardRect.height,
+      contentEscapes: descriptionRect.bottom > cardRect.bottom + 2,
+      progressContentGap: contentRect.top - progressRect.bottom,
+    };
+    description.textContent = originalText;
+    return state;
+  });
+  if (elasticStepState.expandedHeight <= elasticStepState.initialHeight + 2
+    || elasticStepState.contentEscapes
+    || elasticStepState.progressContentGap < 19) {
+    throw new Error(`Карточки этапов не растут по контенту: ${JSON.stringify(elasticStepState)}.`);
+  }
   if (await page.locator(".admissions-documents__list li").count() !== 8) throw new Error("В перечне должно быть восемь документов.");
   if (await page.locator(".admissions-assessment .lesson-card").count() !== 4) throw new Error("В оценке вступительного этапа должно быть четыре критерия.");
   if (await page.locator(".college-trust-card").count() !== 4) throw new Error("В результате обучения должно быть четыре карточки.");

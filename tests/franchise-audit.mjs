@@ -85,6 +85,11 @@ try {
     const financeValues = financeRow?.querySelector("dd");
     const financeValue = financeValues?.querySelector("span");
     const financeCardRect = financeCard?.getBoundingClientRect();
+    const planFeatures = document.querySelector(".franchise-plan__features");
+    const planFeature = planFeatures?.querySelector(".franchise-plan__feature");
+    const planFeatureRect = planFeature?.getBoundingClientRect();
+    const planFeatureStyle = getComputedStyle(planFeature);
+    const planFeatureIconStyle = getComputedStyle(planFeature, "::before");
 
     return {
       dimensions: {
@@ -129,6 +134,27 @@ try {
         },
         valueGap: getComputedStyle(financeValue).gap,
       },
+      planFeatures: {
+        count: document.querySelectorAll(".franchise-plan__feature").length,
+        grid: {
+          display: getComputedStyle(planFeatures).display,
+          columnGap: getComputedStyle(planFeatures).columnGap,
+          rowGap: getComputedStyle(planFeatures).rowGap,
+        },
+        item: {
+          width: Math.round(planFeatureRect.width),
+          gap: planFeatureStyle.gap,
+          padding: planFeatureStyle.padding,
+          borderColor: planFeatureStyle.borderColor,
+          borderRadius: planFeatureStyle.borderRadius,
+          fontSize: planFeatureStyle.fontSize,
+          lineHeight: planFeatureStyle.lineHeight,
+          justifyContent: planFeatureStyle.justifyContent,
+          textAlign: planFeatureStyle.textAlign,
+          iconWidth: planFeatureIconStyle.width,
+          iconHeight: planFeatureIconStyle.height,
+        },
+      },
     };
   }, expectedSections);
 
@@ -169,6 +195,23 @@ try {
     || state.finance.values.gap !== "20px"
     || state.finance.valueGap !== "5px") {
     throw new Error(`Финансовые карточки не совпали с Figma: ${JSON.stringify(state.finance)}.`);
+  }
+  if (state.planFeatures.count !== 12
+    || state.planFeatures.grid.display !== "grid"
+    || state.planFeatures.grid.columnGap !== "5px"
+    || state.planFeatures.grid.rowGap !== "5px"
+    || state.planFeatures.item.width !== 227
+    || state.planFeatures.item.gap !== "10px"
+    || state.planFeatures.item.padding !== "10px 20px"
+    || state.planFeatures.item.borderColor !== "rgb(244, 210, 171)"
+    || state.planFeatures.item.borderRadius !== "20px"
+    || state.planFeatures.item.fontSize !== "14px"
+    || state.planFeatures.item.lineHeight !== "16.8px"
+    || state.planFeatures.item.justifyContent !== "flex-start"
+    || state.planFeatures.item.textAlign !== "left"
+    || state.planFeatures.item.iconWidth !== "24px"
+    || state.planFeatures.item.iconHeight !== "24px") {
+    throw new Error(`Опции тарифных планов не совпали с Figma: ${JSON.stringify(state.planFeatures)}.`);
   }
 
   await page.locator(".franchise-hero [data-application-modal='franchise']").first().click();

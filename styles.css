@@ -309,6 +309,7 @@
   --color-footer: #faebd7;
   --color-accent: #9e2a2b;
   --color-gold: #dbb07d;
+  --color-soft-apricot: #f4d2ab;
   --color-black: #130d05;
   --color-ink: #321414;
   --color-muted: #966a57;
@@ -1527,8 +1528,6 @@ textarea:focus-visible,
   .hall-gallery__row { margin-top: 28px; }
   .hall-gallery__row + .hall-gallery__row { margin-top: 40px; }
   .hall-gallery__viewport { width: 100%; height: auto; min-height: 384px; scrollbar-width: none; }
-  .hall-gallery__arrow--previous { left: max(-20px, calc((100% - 100vw) / 2)); }
-  .hall-gallery__arrow--next { right: max(-20px, calc((100% - 100vw) / 2)); }
   .halls-seo__copy { width: 100%; height: auto; min-height: 0; }
 }
 
@@ -2982,8 +2981,10 @@ textarea:focus-visible,
 .college-admission__image { grid-column: span 2; width: 760px; height: 332px; border-radius: var(--radius-card); object-fit: cover; }
 .admission-step {
   display: flex;
+  height: auto;
   flex-direction: column;
   justify-content: space-between;
+  gap: 20px;
   min-height: 332px;
   padding: 20px;
   border-radius: var(--radius-card);
@@ -3007,7 +3008,7 @@ textarea:focus-visible,
 .admission-step--four .admission-step__progress::after { width: 63px; }
 .admission-step--five .admission-step__progress::after { width: 80px; }
 .admission-step--six .admission-step__progress::after { width: 97px; }
-.admission-step__content { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; }
+.admission-step__content { display: flex; width: 100%; min-width: 0; flex-direction: column; align-items: flex-start; gap: 20px; }
 .admission-step__title { font-family: "Playfair Display", serif; font-size: 34px; font-weight: 600; line-height: 42px; }
 .admission-step__button { margin-top: -10px; }
 
@@ -3689,7 +3690,14 @@ textarea:focus-visible,
 
   .direction-picker, .home-courses { padding: 40px 20px; }
   .direction-picker__title, .home-courses__title { white-space: normal; }
-  .direction-picker__tabs { width: 100%; justify-content: flex-start; overflow-x: auto; }
+  .direction-picker__tabs {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .direction-picker__tabs::-webkit-scrollbar { display: none; }
   .direction-picker__tab { padding-inline: 24px; }
   .direction-picker__grid, .home-courses__grid, .professional__grid, .journey__grid, .trust__body, .trust__grid, .home-about, .addresses__body {
     display: grid;
@@ -4787,6 +4795,8 @@ textarea:focus-visible,
   .slider-shell__inner { width: 100%; }
 
   main > section:not(:first-child) { margin-top: 56px; }
+
+  .home-about__button { width: 100%; }
 
   .section-title {
     font-size: clamp(30px, 8.5vw, 36px);
@@ -6107,6 +6117,7 @@ textarea:focus-visible,
   height: auto;
   flex-direction: column;
   justify-content: space-between;
+  gap: 20px;
   width: 292px;
   min-height: 271px;
   padding: 20px;
@@ -6119,6 +6130,14 @@ textarea:focus-visible,
   height: 12px;
 }
 
+.franchise-launch__card-content {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .franchise-launch__card-title {
   font-family: "Playfair Display", serif;
   font-size: 34px;
@@ -6127,7 +6146,7 @@ textarea:focus-visible,
 }
 
 .franchise-launch__card-description {
-  margin-top: 20px;
+  margin-top: 0;
 }
 
 .franchise-launch__image {
@@ -6520,9 +6539,9 @@ textarea:focus-visible,
 
 .franchise-plan__features {
   display: grid;
-  grid-template-columns: repeat(2, 225px);
-  grid-template-rows: repeat(2, minmax(42px, auto));
-  gap: 10px;
+  grid-template-columns: repeat(2, 227px);
+  grid-template-rows: repeat(2, auto);
+  gap: 5px;
   margin: auto 0 0;
   padding: 0;
   list-style: none;
@@ -6531,22 +6550,24 @@ textarea:focus-visible,
 .franchise-plan__feature {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  width: 225px;
-  min-height: 42px;
-  padding: 5px 10px;
-  border: 1px solid rgba(219, 176, 125, .55);
-  border-radius: 60px;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 227px;
+  min-height: 0;
+  padding: 10px 20px;
+  overflow: hidden;
+  border: 1px solid var(--color-soft-apricot);
+  border-radius: var(--radius-card);
   background: transparent;
-  font-size: 12px;
-  text-align: center;
+  font-size: 14px;
+  line-height: 1.2;
+  text-align: left;
 }
 
 .franchise-plan__feature::before {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
   content: "";
   background: url("assets/images/icon-verify.svg") center / contain no-repeat;
 }
@@ -6915,6 +6936,8 @@ textarea:focus-visible,
     width: 100%;
   }
 
+  .franchise-launch__card { justify-content: flex-start; }
+
   .franchise-package__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     height: auto;
@@ -6962,6 +6985,12 @@ textarea:focus-visible,
   .franchise-plan {
     min-height: 471px;
   }
+
+  .franchise-plan__features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .franchise-plan__feature { width: 100%; }
 
   .franchise-director__content {
     gap: 20px;
@@ -7019,11 +7048,12 @@ textarea:focus-visible,
     min-height: 159px;
   }
 
-  .franchise-launch__card,
-  .franchise-launch__image {
+  .franchise-launch__card {
     height: auto;
-    min-height: 240px;
+    min-height: var(--mobile-card-min-feature);
   }
+
+  .franchise-launch__image { height: auto; min-height: 240px; }
 
   .franchise-package__column {
     gap: 20px;
@@ -7602,6 +7632,6 @@ textarea:focus-visible,
 }
 
 @media (max-width: 1280px) {
-  .carousel__button--previous { left: max(-20px, calc((100% - 100vw) / 2)); }
-  .carousel__button--next { right: max(-20px, calc((100% - 100vw) / 2)); }
+  .carousel__button--previous { left: -15px; }
+  .carousel__button--next { right: -15px; }
 }
