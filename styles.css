@@ -6118,6 +6118,13 @@ textarea:focus-visible,
     margin-top: 0;
   }
 
+  .audience-card { justify-content: flex-start; }
+  .audience-card__title { margin-bottom: 10px; }
+  .audience-card__body {
+    flex: 1;
+    justify-content: space-between;
+  }
+
   .audience-card__button {
     width: 100%;
   }
