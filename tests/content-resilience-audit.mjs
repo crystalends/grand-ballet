@@ -200,6 +200,7 @@ const stressContent = () => {
         && !element.matches(".visually-hidden, .visually-hidden *")
         && style.display !== "none"
         && style.visibility !== "hidden"
+        && !element.closest("[data-carousel]")
         && !element.closest("dialog, [role='dialog']");
     });
 
@@ -288,12 +289,15 @@ const stressContent = () => {
         && className
         && !className.includes("swiper-wrapper");
 
-      if (isMeasurable && targetRect.bottom > ancestorRect.bottom + 2) {
+      const escapedBottom = targetRect.bottom - ancestorRect.bottom;
+      const escapedRight = targetRect.right - ancestorRect.right;
+      if (isMeasurable && (escapedBottom > 2 || escapedRight > 2)) {
         escapedText.push({
           text: target.textContent.trim().replace(/\s+/g, " ").slice(0, 70),
           target: getClassName(target) || target.tagName.toLowerCase(),
           ancestor: className,
-          escapedBy: Math.round(targetRect.bottom - ancestorRect.bottom),
+          escapedBottom: Math.max(0, Math.round(escapedBottom)),
+          escapedRight: Math.max(0, Math.round(escapedRight)),
         });
         break;
       }

@@ -133,6 +133,21 @@ try {
 
   await mkdir("artifacts", { recursive: true });
   await page.screenshot({ path: "artifacts/about-actual.png", fullPage: true });
+
+  await page.setViewportSize({ width: 1281, height: 900 });
+  await page.goto(PAGE_URL, { waitUntil: "networkidle" });
+  const compactHero = await page.locator(".about-hero__panel").evaluate((panel) => {
+    const panelBox = panel.getBoundingClientRect();
+    const copyBox = panel.querySelector(".about-hero__copy").getBoundingClientRect();
+    const actionsBox = panel.querySelector(".about-hero__actions").getBoundingClientRect();
+    return {
+      copyEscapesHorizontally: copyBox.right > panelBox.right + 1,
+      copyEscapesVertically: copyBox.bottom > panelBox.bottom + 1,
+      actionsEscapeVertically: actionsBox.bottom > panelBox.bottom + 1,
+    };
+  });
+  if (Object.values(compactHero).some(Boolean)) throw new Error(`Hero-текст обрезается на компактном desktop: ${JSON.stringify(compactHero)}.`);
+
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(PAGE_URL, { waitUntil: "networkidle" });
   const mobile = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth, broken: [...document.images].filter((image) => !image.complete || image.naturalWidth === 0).length }));

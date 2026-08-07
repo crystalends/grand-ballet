@@ -213,6 +213,34 @@ try {
 
   const trustStatement = page.locator(".audience-statement--college");
   if (!await trustStatement.locator(".audience-statement__copy--college").count()) throw new Error("Градиентная карточка не использует блок audience-statement.");
+  const trustCardStyles = await page.locator(".college-trust-card").first().evaluate((card) => {
+    const cardStyle = getComputedStyle(card);
+    const titleStyle = getComputedStyle(card.querySelector(".college-trust-card__title"));
+    const descriptionStyle = getComputedStyle(card.querySelector(".college-trust-card__description"));
+    return {
+      borderColor: cardStyle.borderColor,
+      borderRadius: cardStyle.borderRadius,
+      titleColor: titleStyle.color,
+      titleFontSize: titleStyle.fontSize,
+      titleLineHeight: titleStyle.lineHeight,
+      descriptionColor: descriptionStyle.color,
+      descriptionFontSize: descriptionStyle.fontSize,
+      descriptionLineHeight: descriptionStyle.lineHeight,
+    };
+  });
+  const expectedTrustCardStyles = {
+    borderColor: "rgb(150, 106, 87)",
+    borderRadius: "20px",
+    titleColor: "rgb(19, 13, 5)",
+    titleFontSize: "24px",
+    titleLineHeight: "32px",
+    descriptionColor: "rgb(50, 20, 20)",
+    descriptionFontSize: "16px",
+    descriptionLineHeight: "19.2px",
+  };
+  if (Object.entries(expectedTrustCardStyles).some(([property, value]) => trustCardStyles[property] !== value)) {
+    throw new Error(`Карточки доверия не соответствуют узлу 175:6397: ${JSON.stringify(trustCardStyles)}.`);
+  }
   const trustStatementActualPath = "artifacts/college-trust-statement-actual.png";
   const trustStatementDiffPath = "artifacts/college-trust-statement-diff.png";
   await trustStatement.screenshot({ path: trustStatementActualPath });
@@ -423,15 +451,18 @@ try {
     const trustLayout = await page.evaluate(() => {
       const statement = document.querySelector(".audience-statement--college").getBoundingClientRect();
       const grid = document.querySelector(".college-trust__grid").getBoundingClientRect();
+      const preparationContent = document.querySelector(".college-preparation__content").getBoundingClientRect();
+      const preparationImage = document.querySelector(".college-preparation__image").getBoundingClientRect();
       const intersectionWidth = Math.max(0, Math.min(statement.right, grid.right) - Math.max(statement.left, grid.left));
       const intersectionHeight = Math.max(0, Math.min(statement.bottom, grid.bottom) - Math.max(statement.top, grid.top));
       const copy = document.querySelector(".audience-statement__copy--college");
       return {
         intersectionArea: intersectionWidth * intersectionHeight,
         copyClipped: copy.scrollHeight > copy.clientHeight + 1,
+        preparationGap: preparationImage.left - preparationContent.right,
       };
     });
-    if (trustLayout.intersectionArea > .5 || trustLayout.copyClipped) {
+    if (trustLayout.intersectionArea > .5 || trustLayout.copyClipped || trustLayout.preparationGap < 19) {
       throw new Error(`Блоки college-trust пересекаются или обрезают текст на ширине ${width}px: ${JSON.stringify(trustLayout)}.`);
     }
   }
@@ -444,6 +475,10 @@ try {
       - document.querySelector(".college-header").getBoundingClientRect().bottom,
     campaignGap: document.querySelector(".college-campaign__button").getBoundingClientRect().top
       - document.querySelector(".college-campaign__copy").getBoundingClientRect().bottom,
+    preparationGap: document.querySelector(".college-preparation__image").getBoundingClientRect().top
+      - document.querySelector(".college-preparation__content").getBoundingClientRect().bottom,
+    locationButtonGap: document.querySelector(".college-location__panel .button").getBoundingClientRect().top
+      - document.querySelector(".college-location__content").getBoundingClientRect().bottom,
     overflow: Array.from(document.querySelectorAll("body *"))
       .map((element) => ({ selector: element.className || element.tagName, right: element.getBoundingClientRect().right }))
       .filter((item) => item.right > window.innerWidth + .5)
@@ -452,6 +487,8 @@ try {
   if (mobileGeometry.width !== mobileGeometry.viewport) throw new Error(`На мобильной ширине появился горизонтальный скролл: ${JSON.stringify(mobileGeometry)}.`);
   if (Math.abs(mobileGeometry.headerHeroGap - 20) > 1) throw new Error(`Неверный отступ между header и hero: ${JSON.stringify(mobileGeometry)}.`);
   if (mobileGeometry.campaignGap < 39) throw new Error(`Текст приёмной кампании налезает на кнопку: ${JSON.stringify(mobileGeometry)}.`);
+  if (mobileGeometry.preparationGap < 27) throw new Error(`Фотография блока подготовки прижата к тексту: ${JSON.stringify(mobileGeometry)}.`);
+  if (mobileGeometry.locationButtonGap < 19) throw new Error(`Кнопка контактов прижата к тексту: ${JSON.stringify(mobileGeometry)}.`);
   if (!await page.locator(".college-hero__image").evaluate((image) => image.complete && image.naturalWidth > 0)) throw new Error("Изображения страницы не загрузились.");
   if (consoleErrors.length) throw new Error(`Ошибки консоли: ${consoleErrors.join(" | ")}`);
 } finally {

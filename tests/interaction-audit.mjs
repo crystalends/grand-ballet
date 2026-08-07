@@ -88,16 +88,20 @@ try {
   await page.addStyleTag({ content: "html { scrollbar-gutter: stable; }" });
   const mobileDirectionTabsState = await page.locator(".direction-picker__tabs").evaluate((tabs) => {
     tabs.scrollLeft = tabs.scrollWidth;
+    const tabsRect = tabs.getBoundingClientRect();
+    const buttonBottom = Math.max(...Array.from(tabs.children, (button) => button.getBoundingClientRect().bottom));
     return {
       clientWidth: tabs.clientWidth,
       scrollWidth: tabs.scrollWidth,
       scrollLeft: tabs.scrollLeft,
       scrollbarWidth: getComputedStyle(tabs).scrollbarWidth,
+      bottomClearance: tabsRect.bottom - buttonBottom,
     };
   });
   if (mobileDirectionTabsState.scrollWidth <= mobileDirectionTabsState.clientWidth
     || mobileDirectionTabsState.scrollLeft <= 0
-    || mobileDirectionTabsState.scrollbarWidth !== "none") {
+    || mobileDirectionTabsState.scrollbarWidth !== "none"
+    || mobileDirectionTabsState.bottomClearance < .9) {
     throw new Error(`Табы направлений должны прокручиваться без видимого scrollbar: ${JSON.stringify(mobileDirectionTabsState)}.`);
   }
   const mobileTextarea = page.locator(".trial-form__textarea").first();

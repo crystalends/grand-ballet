@@ -115,6 +115,8 @@ try {
   await captureMenu(officialMenu, actualPath);
   await compareScreenshot({ referencePath: "assets/reference/figma-header-dropdown.png", actualPath, diffPath, label: "Official dropdown" });
 
+  await page.mouse.move(box.x + 40, box.y + 40, { steps: 12 });
+  if (!await officialMenu.isVisible()) throw new Error("Меню сведений закрывается при переводе указателя с триггера в выпадашку.");
   await page.mouse.move(10, 500);
   if (!await officialMenu.isHidden()) throw new Error("Меню сведений не закрывается после ухода указателя.");
 
@@ -129,6 +131,8 @@ try {
   await captureMenu(applicantsMenu, applicantsActualPath);
   await compareScreenshot({ referencePath: "assets/reference/figma-applicants-dropdown.png", actualPath: applicantsActualPath, diffPath: applicantsDiffPath, label: "Applicants dropdown" });
 
+  await page.mouse.move(applicantsBox.x + 40, applicantsBox.y + 40, { steps: 12 });
+  if (!await applicantsMenu.isVisible()) throw new Error("Меню абитуриентов закрывается при переводе указателя с триггера в выпадашку.");
   await page.mouse.move(10, 500);
   if (!await applicantsMenu.isHidden()) throw new Error("Меню абитуриентов не закрывается после ухода указателя.");
   await officialTrigger.focus();

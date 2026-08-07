@@ -46,6 +46,7 @@ const getMobileModalState = async (modal) => modal.evaluate((dialog) => {
     closeHeight: closeRect.height,
     closeScrollDelta: Math.abs(closeTopAfterScroll - closeTopBeforeScroll),
     imageRatio: imageRect.width / imageRect.height,
+    naturalImageRatio: image.naturalWidth / image.naturalHeight,
     detailsVisibleAtStart,
     lastSectionVisibleAfterScroll: lastSectionRect.bottom <= bodyRect.bottom + 1,
   };
@@ -65,7 +66,7 @@ const assertMobileModal = (file, viewport, state) => {
   if (state.closeWidth < 44 || state.closeHeight < 44 || state.closeScrollDelta > .5) {
     throw new Error(`${file}: кнопка закрытия должна иметь touch-зону 44px и оставаться на месте: ${JSON.stringify(state)}.`);
   }
-  if (Math.abs(state.imageRatio - (4 / 3)) > .02 || !state.detailsVisibleAtStart || !state.lastSectionVisibleAfterScroll) {
+  if (Math.abs(state.imageRatio - state.naturalImageRatio) > .02 || !state.detailsVisibleAtStart || !state.lastSectionVisibleAfterScroll) {
     throw new Error(`${file}: мобильная композиция педагога некорректна: ${JSON.stringify(state)}.`);
   }
 };
