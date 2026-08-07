@@ -1279,14 +1279,14 @@ textarea:focus-visible,
 .school-audience-card__title { margin-bottom: 5px; font-size: 24px; font-weight: 600; line-height: 32px; }
 
 .about-school { display: grid; grid-template-columns: 1020px 500px; gap: 20px; min-height: 539px; margin-top: 100px; }
-.about-school__panel { position: relative; display: flex; flex-direction: column; align-items: flex-start; min-height: 539px; padding: 40px; border-radius: var(--radius-large); background: var(--color-surface); }
+.about-school__panel { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 20px; min-height: 539px; padding: 40px; border-radius: var(--radius-large); background: var(--color-surface); }
 .about-school__copy { display: flex; flex-direction: column; gap: 20px; width: 854px; }
 .about-school__year { display: flex; align-items: center; gap: 10px; width: 270px; min-height: 42px; padding: 9px 10px; border-radius: var(--radius-card); color: var(--color-accent); background: var(--color-card); font-size: 18px; }
 .about-school__year-icon { width: 24px; height: 24px; object-fit: contain; }
 .about-school__year-value { font-weight: 400; }
 .about-school__text { display: flex; flex-direction: column; gap: 10px; font-size: 18px; }
-.about-school__button { margin-top: auto; }
-.about-school__image { width: 500px; height: 539px; border-radius: var(--radius-large); object-fit: cover; }
+.about-school__button { margin-top: 0; }
+.about-school__image { align-self: stretch; width: 500px; height: 539px; min-height: 100%; border-radius: var(--radius-large); object-fit: cover; }
 
 .school-director { display: grid; grid-template-columns: repeat(2, 760px); gap: 20px; min-height: 405px; margin-top: 100px; }
 .school-director__bio { width: 760px; min-height: 405px; }
@@ -1398,8 +1398,8 @@ textarea:focus-visible,
   .school-audience__copy, .about-school__copy, .school-format__intro, .school-mission__lead, .school-roots__intro, .about-team__intro, .school-equipment__copy, .school-students__copy, .about-seo__copy { width: 100%; height: auto; min-height: 0; }
   .school-audience__grid, .school-director__facts, .school-format__grid, .school-mission__body, .school-mission__pair, .school-roots__grid, .school-leaders { grid-template-columns: 1fr; grid-template-rows: none; height: auto; min-height: 0; }
   .school-audience-card, .director-fact, .director-fact--wide, .format-card, .mission-card, .root-card, .leader-card { width: 100%; }
-  .about-school__panel { min-height: 640px; padding: 28px 24px; }
-  .about-school__button { width: 100%; }
+  .about-school__panel { min-height: 0; padding: 28px 24px; }
+  .about-school__button { width: 100%; margin-top: 0; }
   .about-school__image { aspect-ratio: .93; }
   .school-director__summary { height: auto; min-height: 0; }
   .school-director__facts { margin-top: 28px; }

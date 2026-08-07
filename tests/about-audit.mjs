@@ -66,6 +66,38 @@ try {
     }
   }
 
+  const aboutSchoolElasticity = await page.locator(".about-school").evaluate((section) => {
+    const panel = section.querySelector(".about-school__panel");
+    const copy = section.querySelector(".about-school__copy");
+    const paragraph = section.querySelector(".about-school__text p:last-child");
+    const button = section.querySelector(".about-school__button");
+    const image = section.querySelector(".about-school__image");
+    const originalText = paragraph.textContent;
+    const initialPanelHeight = panel.getBoundingClientRect().height;
+
+    paragraph.textContent = Array(7).fill(originalText).join(" ");
+
+    const panelBox = panel.getBoundingClientRect();
+    const copyBox = copy.getBoundingClientRect();
+    const buttonBox = button.getBoundingClientRect();
+    const imageBox = image.getBoundingClientRect();
+    const result = {
+      initialPanelHeight,
+      panelHeight: panelBox.height,
+      imageHeight: imageBox.height,
+      textFits: copyBox.bottom <= panelBox.bottom + 1,
+      buttonGap: buttonBox.top - copyBox.bottom,
+    };
+
+    paragraph.textContent = originalText;
+    return result;
+  });
+  if (Math.abs(aboutSchoolElasticity.initialPanelHeight - 539) > 1) throw new Error(`Исходная высота блока о школе должна оставаться 539px: ${aboutSchoolElasticity.initialPanelHeight}px.`);
+  if (aboutSchoolElasticity.panelHeight <= aboutSchoolElasticity.initialPanelHeight) throw new Error("Блок о школе не растягивается при увеличении текста.");
+  if (!aboutSchoolElasticity.textFits) throw new Error("Текст блока о школе выходит за границы панели.");
+  if (Math.abs(aboutSchoolElasticity.imageHeight - aboutSchoolElasticity.panelHeight) > 1) throw new Error("Изображение блока о школе не растягивается вместе с текстовой панелью.");
+  if (Math.abs(aboutSchoolElasticity.buttonGap - 20) > 1) throw new Error(`Неверный отступ между текстом и кнопкой блока о школе: ${aboutSchoolElasticity.buttonGap}px.`);
+
   const missionLineOffsets = await page.locator(".school-mission .mission-card__line-frame").evaluateAll((frames) => frames.map((frame) => {
     const cardBox = frame.closest(".mission-card").getBoundingClientRect();
     const frameBox = frame.getBoundingClientRect();
@@ -106,6 +138,16 @@ try {
   const mobile = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth, broken: [...document.images].filter((image) => !image.complete || image.naturalWidth === 0).length }));
   if (mobile.scroll > mobile.viewport) throw new Error(`Горизонтальный скролл на мобильном: ${mobile.scroll}px.`);
   if (mobile.broken) throw new Error(`Не загрузились изображения: ${mobile.broken}.`);
+  const mobileAboutSchool = await page.locator(".about-school__panel").evaluate((panel) => {
+    const copyBox = panel.querySelector(".about-school__copy").getBoundingClientRect();
+    const buttonBox = panel.querySelector(".about-school__button").getBoundingClientRect();
+    return {
+      minHeight: Number.parseFloat(getComputedStyle(panel).minHeight),
+      buttonGap: buttonBox.top - copyBox.bottom,
+    };
+  });
+  if (mobileAboutSchool.minHeight !== 0) throw new Error(`На мобильном у блока о школе осталась фиксированная минимальная высота: ${mobileAboutSchool.minHeight}px.`);
+  if (Math.abs(mobileAboutSchool.buttonGap - 20) > 1) throw new Error(`На мобильном неверный отступ между текстом и кнопкой блока о школе: ${mobileAboutSchool.buttonGap}px.`);
   if (consoleErrors.length) throw new Error(`Ошибки консоли: ${consoleErrors.join(" | ")}`);
   console.log("About page geometry, containers, carousel, form and mobile audit: OK");
   console.log("Actual: artifacts/about-actual.png");
