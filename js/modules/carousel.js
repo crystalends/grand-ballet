@@ -50,6 +50,24 @@ const getCarouselOptions = (carousel) => {
   };
 };
 
+const syncTeacherNavigation = (carousel) => {
+  const card = carousel.querySelector(".teacher-card");
+  if (!card) return;
+
+  const updateNavigationPosition = () => {
+    const carouselRect = carousel.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const centerY = cardRect.top - carouselRect.top + cardRect.height / 2;
+    carousel.style.setProperty("--teacher-carousel-navigation-y", `${centerY}px`);
+  };
+
+  updateNavigationPosition();
+
+  const resizeObserver = new ResizeObserver(updateNavigationPosition);
+  resizeObserver.observe(carousel);
+  resizeObserver.observe(card);
+};
+
 const initCarousel = (carousel) => {
   const viewport = carousel.querySelector("[data-carousel-viewport]");
   if (!viewport) return null;
@@ -57,6 +75,7 @@ const initCarousel = (carousel) => {
   viewport.scrollLeft = 0;
   const swiper = new Swiper(viewport, getCarouselOptions(carousel));
   viewport.scrollLeft = 0;
+  syncTeacherNavigation(carousel);
 
   return swiper;
 };

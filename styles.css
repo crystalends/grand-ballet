@@ -756,7 +756,7 @@ textarea:focus-visible,
 .level-card__copy { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 5px; width: 330px; }
 .level-card__title { font-size: 24px; font-weight: 600; line-height: 32px; }
 
-.teachers { position: relative; min-height: 573px; margin-top: 100px; }
+.teachers { --teacher-carousel-navigation-y: 336px; position: relative; min-height: 573px; margin-top: 100px; }
 .teachers__heading, .halls__heading { display: flex; align-items: flex-end; justify-content: space-between; min-height: 58px; }
 .teachers__viewport { width: 100%; min-height: 475px; margin-top: 40px; overflow: hidden; scroll-behavior: smooth; }
 .teachers__track { width: max-content; min-height: 475px; align-items: stretch; }
@@ -1112,7 +1112,11 @@ textarea:focus-visible,
 .carousel__button:disabled { cursor: default; opacity: .35; }
 .carousel__viewport:not(.swiper-initialized) { overflow-x: auto; scrollbar-width: none; }
 .carousel__viewport:not(.swiper-initialized) .carousel__track { gap: 20px; }
-.teachers__arrow { top: 321px; }
+.teachers__arrow,
+.about-team__arrow {
+  top: var(--teacher-carousel-navigation-y);
+  transform: translateY(-50%);
+}
 .teachers__arrow--previous { left: 0; }
 .teachers__arrow--next { right: 0; }
 
@@ -1348,7 +1352,7 @@ textarea:focus-visible,
 .root-card__title { margin: 5px 0; font-size: 24px; font-weight: 600; line-height: 32px; }
 .root-card__image { width: 220px; height: 359px; border-radius: var(--radius-large); object-fit: cover; }
 
-.about-team { position: relative; width: min(1620px, calc(100% - 40px)); min-height: 679px; margin: 100px auto 0; }
+.about-team { --teacher-carousel-navigation-y: 442px; position: relative; width: min(1620px, calc(100% - 40px)); min-height: 679px; margin: 100px auto 0; }
 .about-team__inner { width: min(1540px, calc(100% - 40px)); min-height: 679px; margin-inline: auto; }
 .about-team__heading { display: flex; align-items: flex-end; justify-content: space-between; min-height: 164px; }
 .about-team__intro { display: flex; flex-direction: column; gap: 10px; width: 1150px; min-height: 164px; margin-bottom: -.75px; }
@@ -1357,7 +1361,6 @@ textarea:focus-visible,
 .about-team__track { width: max-content; min-height: 475px; align-items: stretch; }
 .about-team__viewport .swiper-wrapper,
 .about-team__viewport .swiper-slide { height: auto; }
-.about-team__arrow { top: 427px; }
 .about-team__arrow--previous { left: 0; }
 .about-team__arrow--next { right: 0; }
 
@@ -2538,6 +2541,8 @@ textarea:focus-visible,
   min-height: 523px;
   margin-top: 100px;
 }
+
+.home-news__media { display: contents; }
 
 .home-news__viewport {
   width: 100%;
@@ -5084,6 +5089,16 @@ textarea:focus-visible,
   }
 
   .slider-shell__inner { width: 100%; }
+
+  .home-news__media {
+    position: relative;
+    display: block;
+    width: 100%;
+    margin-top: 28px;
+    container-type: inline-size;
+  }
+  .home-news__media .home-news__viewport { margin-top: 0; }
+  .home-news__arrow { top: calc(26.4cqw - 15px); }
 
   main > section:not(:first-child) { margin-top: 56px; }
 

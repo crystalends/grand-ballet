@@ -118,6 +118,19 @@ try {
   await mobileTextarea.fill("");
   await page.waitForFunction(() => [...document.querySelectorAll("[data-carousel-viewport]")]
     .every((viewport) => viewport.classList.contains("swiper-initialized")));
+  const mobileNewsArrowAlignment = await page.locator(".home-news").evaluate((section) => {
+    const image = section.querySelector(".news-card__image").getBoundingClientRect();
+    const previous = section.querySelector("[data-carousel-previous]").getBoundingClientRect();
+    const next = section.querySelector("[data-carousel-next]").getBoundingClientRect();
+    const imageCenter = image.top + image.height / 2;
+    return {
+      previousDelta: Math.abs(previous.top + previous.height / 2 - imageCenter),
+      nextDelta: Math.abs(next.top + next.height / 2 - imageCenter),
+    };
+  });
+  if (mobileNewsArrowAlignment.previousDelta > 1 || mobileNewsArrowAlignment.nextDelta > 1) {
+    throw new Error(`Стрелки новостей не выровнены по центру фотографии: ${JSON.stringify(mobileNewsArrowAlignment)}.`);
+  }
   const carouselViewports = page.locator("[data-carousel-viewport]");
   for (let index = 0; index < await carouselViewports.count(); index += 1) {
     const viewport = carouselViewports.nth(index);

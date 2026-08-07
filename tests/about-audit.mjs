@@ -150,6 +150,19 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(PAGE_URL, { waitUntil: "networkidle" });
+  const teamNavigationAlignment = await page.locator(".about-team").evaluate((section) => {
+    const card = section.querySelector(".teacher-card").getBoundingClientRect();
+    const previous = section.querySelector("[data-carousel-previous]").getBoundingClientRect();
+    const next = section.querySelector("[data-carousel-next]").getBoundingClientRect();
+    const cardCenter = card.top + card.height / 2;
+    return {
+      previousDelta: Math.abs(previous.top + previous.height / 2 - cardCenter),
+      nextDelta: Math.abs(next.top + next.height / 2 - cardCenter),
+    };
+  });
+  if (teamNavigationAlignment.previousDelta > 1 || teamNavigationAlignment.nextDelta > 1) {
+    throw new Error(`Стрелки педагогов не выровнены по центру общей карточки: ${JSON.stringify(teamNavigationAlignment)}.`);
+  }
   const mobile = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth, broken: [...document.images].filter((image) => !image.complete || image.naturalWidth === 0).length }));
   if (mobile.scroll > mobile.viewport) throw new Error(`Горизонтальный скролл на мобильном: ${mobile.scroll}px.`);
   if (mobile.broken) throw new Error(`Не загрузились изображения: ${mobile.broken}.`);
