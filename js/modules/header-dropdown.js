@@ -49,10 +49,14 @@ const createMenu = ({ items, key }, id) => {
 
 const findTrigger = (header, key) => header.querySelector(`[data-header-dropdown="${key}"]`);
 
-const setDropdownState = ({ wrapper, trigger, menu }, isOpen, focusFirst = false) => {
+const setDropdownState = ({ wrapper, trigger, menu, mobileQuery }, isOpen, focusFirst = false) => {
   wrapper.classList.toggle("college-header__dropdown--open", isOpen);
   trigger.setAttribute("aria-expanded", String(isOpen));
-  menu.hidden = !isOpen;
+  const isMobile = mobileQuery.matches;
+  menu.hidden = !isMobile && !isOpen;
+  menu.inert = isMobile && !isOpen;
+  if (isMobile) menu.setAttribute("aria-hidden", String(!isOpen));
+  else menu.removeAttribute("aria-hidden");
   if (focusFirst) menu.querySelector("a")?.focus();
 };
 
@@ -71,13 +75,16 @@ const initHeaderDropdown = (header, config, headerIndex) => {
   trigger.before(wrapper);
   wrapper.append(trigger, menu);
 
-  const dropdown = { wrapper, trigger, menu };
+  const mobileQuery = window.matchMedia("(max-width: 1280px)");
+  const dropdown = { wrapper, trigger, menu, mobileQuery };
   const isOpen = () => trigger.getAttribute("aria-expanded") === "true";
   const close = () => setDropdownState(dropdown, false);
+  setDropdownState(dropdown, false);
 
   trigger.addEventListener("click", (event) => {
     event.preventDefault();
-    setDropdownState(dropdown, precisePointer.matches ? true : !isOpen());
+    const shouldToggle = mobileQuery.matches || !precisePointer.matches;
+    setDropdownState(dropdown, shouldToggle ? !isOpen() : true);
   });
 
   trigger.addEventListener("keydown", (event) => {
@@ -98,16 +105,18 @@ const initHeaderDropdown = (header, config, headerIndex) => {
 
   const precisePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
   wrapper.addEventListener("pointerenter", () => {
-    if (precisePointer.matches) setDropdownState(dropdown, true);
+    if (precisePointer.matches && !mobileQuery.matches) setDropdownState(dropdown, true);
   });
   wrapper.addEventListener("pointerleave", () => {
-    if (precisePointer.matches) close();
+    if (precisePointer.matches && !mobileQuery.matches) close();
   });
 
   document.addEventListener("pointerdown", (event) => {
     if (!wrapper.contains(event.target)) close();
   });
 
+  header.addEventListener("mobile-menu:close-submenus", close);
+  mobileQuery.addEventListener("change", close);
   menu.addEventListener("click", close);
   return dropdown;
 };

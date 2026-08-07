@@ -213,17 +213,70 @@ try {
     || await mobileMenuPhone.getAttribute("href") !== "tel:+74951251818") {
     throw new Error("Телефон из header не добавлен в основное мобильное меню.");
   }
+  await page.waitForTimeout(1100);
+  const directionsToggle = page.locator(".site-header__directions-toggle");
+  if (await directionsToggle.count() !== 1
+    || await page.locator(".site-header__directions-source-link").evaluate((link) => getComputedStyle(link).display) !== "none") {
+    throw new Error("На мобильном ссылка «Направления» должна заменяться одной кнопкой подменю.");
+  }
+  await directionsToggle.click();
+  await page.waitForTimeout(650);
+  const directionsSubmenu = await page.evaluate(() => {
+    const panel = document.querySelector(".site-header__directions-panel");
+    const content = document.querySelector(".site-header__menu-content");
+    return {
+      expanded: document.querySelector(".site-header__directions-toggle").getAttribute("aria-expanded"),
+      panelHeight: panel.getBoundingClientRect().height,
+      groupHeadings: [...panel.querySelectorAll(".site-header__directions-heading")].map((heading) => heading.textContent.trim()),
+      linkLabels: [...panel.querySelectorAll(".site-header__directions-link")].map((link) => link.textContent.trim()),
+      pageHref: panel.querySelector(".site-header__directions-page-link")?.getAttribute("href"),
+      pageLabel: panel.querySelector(".site-header__directions-page-link")?.textContent.trim(),
+      contentOverflowY: getComputedStyle(content).overflowY,
+      contentScrolls: content.scrollHeight > content.clientHeight,
+    };
+  });
+  const expectedDirections = [
+    "Балет для детей", "Мама и малыш", "Начальная хореография", "Классическая хореография", "Современная хореография", "Уличные танцы",
+    "Балет для взрослых", "Body ballet", "Партерная гимнастика", "Йога", "Телесные практики",
+    "Подготовка к поступлению", "Интенсивы", "Индивидуальные занятия", "Аренда залов",
+  ];
+  if (directionsSubmenu.expanded !== "true"
+    || directionsSubmenu.panelHeight < 550
+    || directionsSubmenu.groupHeadings.join("|") !== "Для детей|Для взрослых|Дополнительные форматы"
+    || directionsSubmenu.linkLabels.join("|") !== expectedDirections.join("|")
+    || directionsSubmenu.pageHref !== "directions.html"
+    || directionsSubmenu.pageLabel !== "Все направления"
+    || directionsSubmenu.contentOverflowY !== "auto"
+    || !directionsSubmenu.contentScrolls) {
+    throw new Error(`Подменю должно содержать все направления и прокручиваться внутри основной панели: ${JSON.stringify(directionsSubmenu)}.`);
+  }
+  await page.keyboard.press("Escape");
+  if (await directionsToggle.getAttribute("aria-expanded") !== "false"
+    || await mobileMenu.getAttribute("aria-expanded") !== "true"
+    || !await directionsToggle.evaluate((button) => button === document.activeElement)) {
+    throw new Error("Первый Escape должен закрывать только подменю направлений и возвращать фокус на его кнопку.");
+  }
   const siteHeaderLayout = await page.evaluate(() => {
     const header = document.querySelector(".site-header");
     const actions = header.querySelector(".site-header__actions");
     const toggle = header.querySelector(".site-header__menu-toggle");
     const icon = toggle.querySelector(".site-header__menu-icon");
     const nav = header.querySelector(".site-header__nav");
+    const content = nav.querySelector(".site-header__menu-content");
+    const shortcuts = nav.querySelector(".site-header__menu-shortcuts");
+    const middleLine = icon.querySelector(".site-header__menu-line--middle");
     const rect = (element) => element.getBoundingClientRect();
     const toggleRect = rect(toggle);
     const iconRect = rect(icon);
     const navRect = rect(nav);
     const headerRect = rect(header);
+    const filler = document.createElement("div");
+    filler.style.cssText = "height:1000px;flex:0 0 1000px";
+    content.append(filler);
+    content.scrollTop = 100;
+    const internalScrollWorks = content.scrollTop > 0;
+    filler.remove();
+    content.scrollTop = 0;
     return {
       toggleParent: toggle.parentElement === actions,
       iconOffsetX: Math.abs((toggleRect.left + toggleRect.width / 2) - (iconRect.left + iconRect.width / 2)),
@@ -231,9 +284,22 @@ try {
       iconWidth: iconRect.width,
       iconHeight: iconRect.height,
       navRightOffset: Math.abs(headerRect.right - navRect.right),
+      navBottomOffset: window.innerHeight - navRect.bottom,
+      navPosition: getComputedStyle(nav).position,
       navTransitionProperties: getComputedStyle(nav).transitionProperty,
-      items: [...nav.children].map((item) => ({
+      panelTransitionProperties: getComputedStyle(nav, "::after").transitionProperty,
+      panelTransitionTiming: getComputedStyle(nav, "::after").transitionTimingFunction,
+      lineCount: icon.querySelectorAll(".site-header__menu-line").length,
+      middleLineDuration: getComputedStyle(middleLine).transitionDuration,
+      middleLineDelay: getComputedStyle(middleLine).transitionDelay,
+      bodyScrollLocked: getComputedStyle(document.body).overflow === "hidden",
+      contentOverflowY: getComputedStyle(content).overflowY,
+      internalScrollWorks,
+      shortcutLabels: [...shortcuts.querySelectorAll(".site-header__menu-shortcut")].map((item) => item.textContent.trim()),
+      shortcutLinkCount: shortcuts.querySelectorAll("a").length,
+      items: [...content.children].map((item) => ({
         isPhone: item.classList.contains("site-header__menu-phone"),
+        isDirections: item.classList.contains("site-header__directions"),
         height: rect(item).height,
         textAlign: getComputedStyle(item).textAlign,
       })),
@@ -241,10 +307,22 @@ try {
   });
   if (!siteHeaderLayout.toggleParent) throw new Error("Бургер и CTA должны находиться в одной action-группе.");
   if (siteHeaderLayout.iconOffsetX > .5 || siteHeaderLayout.iconOffsetY > .5) throw new Error(`Иконка бургера не отцентрирована: ${JSON.stringify(siteHeaderLayout)}.`);
-  if (siteHeaderLayout.iconWidth !== 20 || siteHeaderLayout.iconHeight !== 20) throw new Error(`Мобильная иконка бургера должна иметь размер 20×20px: ${JSON.stringify(siteHeaderLayout)}.`);
+  if (siteHeaderLayout.iconWidth !== 30 || siteHeaderLayout.iconHeight !== 20 || siteHeaderLayout.lineCount !== 3) throw new Error(`Бургер должен повторять трёхлинейную структуру из /old: ${JSON.stringify(siteHeaderLayout)}.`);
   if (siteHeaderLayout.navRightOffset > .5) throw new Error(`Меню не выровнено по правому краю header: ${JSON.stringify(siteHeaderLayout)}.`);
-  if (!siteHeaderLayout.navTransitionProperties.includes("opacity")) throw new Error(`У мобильного меню отсутствует fade-переход: ${JSON.stringify(siteHeaderLayout)}.`);
-  if (siteHeaderLayout.items.some((item) => item.height < 44 || item.textAlign !== "left")) {
+  if (siteHeaderLayout.navPosition !== "fixed" || Math.abs(siteHeaderLayout.navBottomOffset - 16) > .5) throw new Error(`Мобильное меню должно заканчиваться в 16px от низа viewport: ${JSON.stringify(siteHeaderLayout)}.`);
+  if (!siteHeaderLayout.navTransitionProperties.includes("visibility")
+    || !siteHeaderLayout.panelTransitionProperties.includes("width")
+    || !siteHeaderLayout.panelTransitionProperties.includes("height")
+    || !siteHeaderLayout.panelTransitionTiming.includes("cubic-bezier(0.77, 0, 0.175, 1)")) {
+    throw new Error(`Не перенесено круговое раскрытие панели из /old: ${JSON.stringify(siteHeaderLayout)}.`);
+  }
+  if (siteHeaderLayout.middleLineDuration.split(", ").some((duration) => duration !== "0.7s") || siteHeaderLayout.middleLineDelay !== "0.5s") throw new Error(`Тайминги превращения бургера в крест не соответствуют /old: ${JSON.stringify(siteHeaderLayout)}.`);
+  if (!siteHeaderLayout.bodyScrollLocked) throw new Error("При открытом мобильном меню прокрутка страницы должна блокироваться.");
+  if (siteHeaderLayout.contentOverflowY !== "auto" || !siteHeaderLayout.internalScrollWorks) throw new Error(`Прокрутка должна работать только внутри контента меню: ${JSON.stringify(siteHeaderLayout)}.`);
+  if (siteHeaderLayout.shortcutLabels.join("|") !== "Для детей|Для взрослых" || siteHeaderLayout.shortcutLinkCount !== 0) {
+    throw new Error(`Верхние пункты направлений должны быть неактивными: ${JSON.stringify(siteHeaderLayout)}.`);
+  }
+  if (siteHeaderLayout.items.some((item) => (!item.isDirections && item.height < 44) || item.textAlign !== "left")) {
     throw new Error(`Пункты меню не имеют заданного выравнивания или touch-зоны 44px: ${JSON.stringify(siteHeaderLayout.items)}.`);
   }
   await page.keyboard.press("Escape");
@@ -266,6 +344,7 @@ try {
     const referenceButton = actions.querySelector(".college-header__icon-button");
     const phoneIcon = actions.querySelector('.college-header__icon-button[href^="tel:"] .college-header__icon');
     const nav = header.querySelector(".college-header__nav");
+    const content = nav.querySelector(".college-header__menu-content");
     const rect = (element) => element.getBoundingClientRect();
     const toggleRect = rect(toggle);
     const iconRect = rect(icon);
@@ -283,7 +362,8 @@ try {
       menuIconHeight: iconRect.height,
       phoneIconWidth: phoneIconRect.width,
       phoneIconHeight: phoneIconRect.height,
-      items: [...nav.children].map((item) => ({
+      lineCount: icon.querySelectorAll(".college-header__menu-line").length,
+      items: [...content.children].map((item) => ({
         height: rect(item).height,
         textAlign: getComputedStyle(item).textAlign,
       })),
@@ -293,11 +373,12 @@ try {
   if (collegeHeaderLayout.iconOffsetX > .5 || collegeHeaderLayout.iconOffsetY > .5) throw new Error(`Иконка бургера колледжа не отцентрирована: ${JSON.stringify(collegeHeaderLayout)}.`);
   if (collegeHeaderLayout.toggleWidth !== collegeHeaderLayout.referenceButtonWidth
     || collegeHeaderLayout.toggleHeight !== collegeHeaderLayout.referenceButtonHeight
-    || collegeHeaderLayout.menuIconWidth !== collegeHeaderLayout.phoneIconWidth
-    || collegeHeaderLayout.menuIconHeight !== collegeHeaderLayout.phoneIconHeight
-    || collegeHeaderLayout.menuIconWidth !== 20
-    || collegeHeaderLayout.menuIconHeight !== 20) {
-    throw new Error(`Бургер и телефон колледжа должны иметь одинаковые размеры кнопок и иконок: ${JSON.stringify(collegeHeaderLayout)}.`);
+    || collegeHeaderLayout.menuIconWidth !== 30
+    || collegeHeaderLayout.menuIconHeight !== 20
+    || collegeHeaderLayout.lineCount !== 3
+    || collegeHeaderLayout.phoneIconWidth !== 20
+    || collegeHeaderLayout.phoneIconHeight !== 20) {
+    throw new Error(`Бургер колледжа должен использовать новую трёхлинейную анимацию в прежней touch-зоне: ${JSON.stringify(collegeHeaderLayout)}.`);
   }
   if (collegeHeaderLayout.items.some((item) => item.height < 44 || item.textAlign !== "left")) throw new Error(`Пункты меню колледжа не имеют единой левой оси или touch-зоны 44px: ${JSON.stringify(collegeHeaderLayout.items)}.`);
 

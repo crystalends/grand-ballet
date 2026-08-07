@@ -10,8 +10,8 @@ initFaq(document.querySelector(".faq__list"));
 initTrialForm(document.querySelector(".trial-form"));
 initDirectionTabs(document.querySelector(".direction-picker__tabs"));
 initTeacherModal(document.querySelectorAll(".teacher-card"));
-initMobileMenus(document.querySelectorAll(".site-header, .college-header"));
 initHeaderDropdowns(document.querySelectorAll(".college-header"));
+initMobileMenus(document.querySelectorAll(".site-header, .college-header"));
 
 initApplicationModal(document.querySelectorAll("[data-application-modal]"));
 

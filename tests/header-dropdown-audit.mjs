@@ -147,9 +147,30 @@ try {
   await menuToggle.click();
   const mobileTrigger = page.locator('.college-header__dropdown-trigger[aria-controls^="college-header-dropdown-applicants-"]');
   await mobileTrigger.click();
+  await page.waitForTimeout(650);
   if (!await page.locator(".college-header__dropdown-menu--applicants").isVisible() || !await page.locator(".college-header__nav").isVisible()) throw new Error("Мобильная выпадашка закрывает основное меню.");
+  const mobileDropdownStyle = await page.locator(".college-header__dropdown-menu--applicants").evaluate((menu) => {
+    const menuStyle = getComputedStyle(menu);
+    const link = menu.querySelector(".college-header__dropdown-link");
+    const linkStyle = getComputedStyle(link);
+    return {
+      background: menuStyle.backgroundColor,
+      radius: menuStyle.borderRadius,
+      linkFontSize: linkStyle.fontSize,
+      linkHeight: link.getBoundingClientRect().height,
+    };
+  });
+  if (mobileDropdownStyle.background !== "rgba(0, 0, 0, 0)" || mobileDropdownStyle.radius !== "0px") throw new Error("Мобильное подменю должно раскрываться без отдельной карточки.");
+  if (mobileDropdownStyle.linkFontSize !== "14px" || mobileDropdownStyle.linkHeight < 40) throw new Error("Размеры ссылок мобильного подменю не совпадают с меню направлений.");
+  if (await mobileTrigger.locator("svg, img").count()) throw new Error("У пунктов меню колледжа не должно быть иконок.");
   const mobile = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
   if (mobile.scroll > mobile.viewport) throw new Error(`Горизонтальный скролл на мобильном: ${mobile.scroll}px.`);
+  await mobileTrigger.click();
+  await page.waitForTimeout(650);
+  if (await page.locator(".college-header__dropdown-menu--applicants").isVisible() || await mobileTrigger.getAttribute("aria-expanded") !== "false") throw new Error("Повторное нажатие не закрывает мобильное подменю.");
+  await mobileTrigger.click();
+  await page.waitForTimeout(650);
+  if (!await page.locator(".college-header__dropdown-menu--applicants").isVisible() || await mobileTrigger.getAttribute("aria-expanded") !== "true") throw new Error("Мобильное подменю не открывается повторным нажатием.");
 
   if (consoleErrors.length) throw new Error(`Ошибки консоли: ${consoleErrors.join(" | ")}`);
   console.log("Header dropdown geometry, visual, pointer, keyboard and mobile audit: OK");
